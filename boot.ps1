@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FIXED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FULLY FIXED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -45,6 +45,7 @@ $THEMES = @{
 
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
+$Global:OptimizeState = $false  # Track performance toggle state
 
 # --- MAIN ARTIFACT WINDOW ---
 $Form = New-Object System.Windows.Forms.Form
@@ -125,48 +126,67 @@ function Update-Status($msg, $isError=$false) {
     Log $msg
 }
 
+# --- PERFORMANCE TOGGLE LOGIC ---
+function Toggle-Performance {
+    if ($Global:OptimizeState) {
+        # Turn OFF / Switch to Balanced Plan
+        Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Restore Balanced Power Management Mode"
+        $Global:OptimizeState = $false
+        Update-Status "Performance Mode Disabled (Switched to Balanced)"
+    } else {
+        # Turn ON / Switch to High Performance
+        Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "Enable High Performance Power Engine Mode"
+        $Global:OptimizeState = $true
+        Update-Status "High Performance Power Mode Enabled"
+    }
+    # Refresh Workspace UI to update button label if needed
+    Render-Workspace
+}
+
 # --- COMMAND DISPATCHER ---
 function Resolve-Command($label) {
-    $txt = $label.ToLower()
-    switch -wildcard ($txt) {
-        "*computer management*" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
-        "*control panel*"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
-        "*network connections*" { Start-Process "ncpa.cpl"; Update-Status "Deployed Network Connections" }
-        "*power panel*"         { Start-Process "control" "powercfg.cpl"; Update-Status "Deployed Power Panel" }
-        "*printer panel*"       { Start-Process "control" "printers"; Update-Status "Deployed Printer Panel" }
-        "*region*"              { Start-Process "intl.cpl"; Update-Status "Deployed Region Panel" }
-        "*sound settings*"      { Start-Process "mmsys.cpl"; Update-Status "Deployed Sound Settings" }
-        "*system properties*"   { Start-Process "sysdm.cpl"; Update-Status "Deployed System Properties" }
-        "*time and date*"       { Start-Process "timedate.cpl"; Update-Status "Deployed Time & Date Panel" }
-        "*spooler*"             { Trigger-Spooler }
-        "*timeout*"             { Show-TimeoutUI }
-        "*corruption scan*"     { Run-Cmd "sfc /scannow" "SFC System Integrity Target" }
-        "*clear temp files*"    { Run-Cmd "cmd.exe /c del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
-        "*optimize performance*" { Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "Enable High Performance Power Engine Mode" }
-        "*enable long paths*"   { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Win32 Naming Path Extension Limit Lifted" }
-        "*disable sticky keys*" { Run-Cmd 'reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f' "Sticky Keys System Interrupter Disabled" }
-        "*create restore point*"{ Run-Cmd "powershell -Command Checkpoint-Computer -Description 'AdminToolRestore' -RestorePointType 'MODIFY_SETTINGS'" "System Restore Snapshot Validation" }
-        "*network adaptor*"     { Show-NetworkUI }
-        "*ip config overview*"  { Run-Cmd "ipconfig /all" "IP Protocol Configuration Matrix" }
-        "*ping diagnostic*"     { Run-Cmd "ping 8.8.8.8 -t" "ICMP Destination Core Ping Stream" }
-        "*gp update force*"     { Run-Cmd "gpupdate /force" "Group Policy Policy Refresh Optimization" }
-        "*network reset sequence*" { Run-Cmd "cmd.exe /c netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
-        "*flush dns cache*"     { Run-Cmd "ipconfig /flushdns" "DNS Resolver Local Cache Purge" }
-        "*view active connections*" { Run-Cmd "netstat -an" "Active Inter-Network Route Monitor Output" }
-        "*firewall status check*" { Run-Cmd "netsh advfirewall show allprofiles" "Windows Defender Security Firewall Verification" }
-        "*ntp server sync*"     { Run-Cmd "w32tm /resync" "System Hardware Time NTP Synchronization Sequence" }
-        "*openssh server enable*"{ Run-Cmd "powershell -Command Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0" "Deploy and Bind Local Secure Shell Architecture" }
-        "*windows update reset*" { Run-Cmd "cmd.exe /c net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
-        "*winget reinstall*"    { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Package Manager Deployment Restoration" }
-        "*rebuild icon cache*"  { Run-Cmd "cmd.exe /c ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
-        "*reset windows store*" { Run-Cmd "wsreset.exe" "Microsoft Store Architecture Cache Clearing Matrix" }
-        "*repair component store*" { Run-Cmd "DISM /Online /Cleanup-Image /RestoreHealth" "Deployment Image Servicing Engine Optimization Sync" }
-        "*chkdsk scan*"         { Run-Cmd "chkdsk C: /f /r /x" "NTFS File Allocation Index Sector Validation Task" }
-        "*fix package manager*" { Run-Cmd "dism /online /cleanup-image /startcomponentcleanup" "WinSxS Side-by-Side Component Library Optimization" }
-        "*restart explorer*"    { Run-Cmd "cmd.exe /c taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
-        "*clear dns resolver*"  { Run-Cmd "ipconfig /registerdns" "Network Registration Handle Updates Initiated" }
-        "*reset winsock*"       { Run-Cmd "netsh winsock reset catalog" "Winsock API Layer Catalog Protocol Reset Pipeline" }
-        default                 { Update-Status "Dispatched custom pipeline instructions: $label" }
+    # Clean string matching to avoid wildcard parsing issues
+    $txt = $label.Trim().ToLower()
+    
+    switch -regex ($txt) {
+        "computer management" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
+        "control panel"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
+        "network connections" { Start-Process "ncpa.cpl"; Update-Status "Deployed Network Connections" }
+        "power panel"         { Start-Process "control" "powercfg.cpl"; Update-Status "Deployed Power Panel" }
+        "printer panel"       { Start-Process "control" "printers"; Update-Status "Deployed Printer Panel" }
+        "region"              { Start-Process "intl.cpl"; Update-Status "Deployed Region Panel" }
+        "sound settings"      { Start-Process "mmsys.cpl"; Update-Status "Deployed Sound Settings" }
+        "system properties"   { Start-Process "sysdm.cpl"; Update-Status "Deployed System Properties" }
+        "time and date"       { Start-Process "timedate.cpl"; Update-Status "Deployed Time & Date Panel" }
+        "restart spooler"     { Trigger-Spooler }
+        "force screen timeout" { Show-TimeoutUI }
+        "system corruption scan" { Run-Cmd "sfc /scannow" "SFC System Integrity Target" }
+        "clear temp files"    { Run-Cmd "cmd.exe /c del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
+        "optimize performance" { Toggle-Performance }
+        "enable long paths"   { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Win32 Naming Path Extension Limit Lifted" }
+        "disable sticky keys" { Run-Cmd 'reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f' "Sticky Keys System Interrupter Disabled" }
+        "create restore point"{ Run-Cmd "powershell -Command Checkpoint-Computer -Description 'AdminToolRestore' -RestorePointType 'MODIFY_SETTINGS'" "System Restore Snapshot Validation" }
+        "network adaptor"     { Show-NetworkUI }
+        "ip config overview"  { Run-Cmd "ipconfig /all" "IP Protocol Configuration Matrix" }
+        "ping diagnostic"     { Run-Cmd "ping 8.8.8.8 -t" "ICMP Destination Core Ping Stream" }
+        "gp update force"     { Run-Cmd "gpupdate /force" "Group Policy Policy Refresh Optimization" }
+        "network reset sequence" { Run-Cmd "cmd.exe /c netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
+        "flush dns cache"     { Run-Cmd "ipconfig /flushdns" "DNS Resolver Local Cache Purge" }
+        "view active connections" { Run-Cmd "netstat -an" "Active Inter-Network Route Monitor Output" }
+        "firewall status check" { Run-Cmd "netsh advfirewall show allprofiles" "Windows Defender Security Firewall Verification" }
+        "ntp server sync"     { Run-Cmd "w32tm /resync" "System Hardware Time NTP Synchronization Sequence" }
+        "openssh server enable"{ Run-Cmd "powershell -Command Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0" "Deploy and Bind Local Secure Shell Architecture" }
+        "windows update reset" { Run-Cmd "cmd.exe /c net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
+        "winget reinstall"    { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Package Manager Deployment Restoration" }
+        "rebuild icon cache"  { Run-Cmd "cmd.exe /c ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
+        "reset windows store" { Run-Cmd "wsreset.exe" "Microsoft Store Architecture Cache Clearing Matrix" }
+        "repair component store" { Run-Cmd "DISM /Online /Cleanup-Image /RestoreHealth" "Deployment Image Servicing Engine Optimization Sync" }
+        "chkdsk scan"         { Run-Cmd "chkdsk C: /f /r /x" "NTFS File Allocation Index Sector Validation Task" }
+        "fix package manager" { Run-Cmd "dism /online /cleanup-image /startcomponentcleanup" "WinSxS Side-by-Side Component Library Optimization" }
+        "restart explorer"    { Run-Cmd "cmd.exe /c taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
+        "clear dns resolver"  { Run-Cmd "ipconfig /registerdns" "Network Registration Handle Updates Initiated" }
+        "reset winsock"       { Run-Cmd "netsh winsock reset catalog" "Winsock API Layer Catalog Protocol Reset Pipeline" }
+        default                 { Update-Status "Command triggered: $label" }
     }
 }
 
@@ -238,7 +258,7 @@ function Trigger-Spooler {
     Update-Status "Terminating dynamic printing subsystem task allocations..."
     Stop-Service -Name "Spooler" -Force
     Log "Purging memory caches and lingering corrupt workspace structures..."
-    Get-ChildItem -Path "$env:systemroot\System32\Spool\Printers\*" -Recurse | Remove-Item -Force
+    Get-ChildItem -Path "$env:systemroot\System32\Spool\Printers\*" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
     Start-Service -Name "Spooler"
     Update-Status "Print spooler subsystem engine fully restored and online."
 }
@@ -439,7 +459,15 @@ function Render-Workspace {
         for ($i=0; $i -lt $currentSubs.Count; $i++) {
             $subText = $currentSubs[$i]
             $B = New-Object System.Windows.Forms.Button
-            $B.Text = "  $subText"
+            
+            # Context-aware naming for Optimize Toggle
+            if ($subText -eq "Optimize Performance") {
+                if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
+                else { $B.Text = "  Optimize Performance (Enable)" }
+            } else {
+                $B.Text = "  $subText"
+            }
+            
             $B.Font = $FontBtn
             $B.Size = New-Object System.Drawing.Size(585, 40)
             $B.FlatStyle = "Flat"
@@ -447,9 +475,18 @@ function Render-Workspace {
             $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
             $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
             $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
-            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
+            
+            # Map dynamic text back to exact function commands
+            $B.Add_Click({ 
+                $cmdLabel = $this.Text.Trim()
+                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
+                    Resolve-Command "Optimize Performance"
+                } else {
+                    Resolve-Command $cmdLabel
+                }
+            })
 
-            if ($i -lt 5) {
+            if ($i -lt 4) {
                 $B.Location = New-Object System.Drawing.Point(20, $LY)
                 $LeftPanel.Controls.Add($B)
                 $LY += 50
@@ -496,28 +533,4 @@ function Apply-ThemeEngine {
     $tm = $THEMES[$Global:ActiveTheme]
     $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
     $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
-    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
-    
-    Render-Navigation
-    Render-Workspace
-}
-
-# --- THEME DROPDOWN SETUP ---
-$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
-$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
-$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
-$ThemeDropdown.Font = $FontBtn
-$ThemeDropdown.DropDownStyle = "DropDownList"
-foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
-$ThemeDropdown.SelectedItem = $Global:ActiveTheme
-$ThemeDropdown.Add_SelectedIndexChanged({
-    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
-    Apply-ThemeEngine
-    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
-})
-$TopHeader.Controls.Add($ThemeDropdown)
-
-# --- EXECUTION INITIALIZATION ---
-Apply-ThemeEngine
-Log "Advanced Windows Optimization Core Engine Environment Initialized."
-[System.Windows.Forms.Application]::Run($Form)
+    $NotificationBar.BackColor =
