@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FULLY FIXED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -45,7 +45,7 @@ $THEMES = @{
 
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
-$Global:OptimizeState = $false  # Track performance toggle state
+$Global:OptimizeState = $false
 
 # --- MAIN ARTIFACT WINDOW ---
 $Form = New-Object System.Windows.Forms.Form
@@ -129,25 +129,20 @@ function Update-Status($msg, $isError=$false) {
 # --- PERFORMANCE TOGGLE LOGIC ---
 function Toggle-Performance {
     if ($Global:OptimizeState) {
-        # Turn OFF / Switch to Balanced Plan
         Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Restore Balanced Power Management Mode"
         $Global:OptimizeState = $false
         Update-Status "Performance Mode Disabled (Switched to Balanced)"
     } else {
-        # Turn ON / Switch to High Performance
         Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "Enable High Performance Power Engine Mode"
         $Global:OptimizeState = $true
         Update-Status "High Performance Power Mode Enabled"
     }
-    # Refresh Workspace UI to update button label if needed
     Render-Workspace
 }
 
 # --- COMMAND DISPATCHER ---
 function Resolve-Command($label) {
-    # Clean string matching to avoid wildcard parsing issues
     $txt = $label.Trim().ToLower()
-    
     switch -regex ($txt) {
         "computer management" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
         "control panel"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
@@ -460,7 +455,6 @@ function Render-Workspace {
             $subText = $currentSubs[$i]
             $B = New-Object System.Windows.Forms.Button
             
-            # Context-aware naming for Optimize Toggle
             if ($subText -eq "Optimize Performance") {
                 if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
                 else { $B.Text = "  Optimize Performance (Enable)" }
@@ -476,7 +470,6 @@ function Render-Workspace {
             $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
             $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
             
-            # Map dynamic text back to exact function commands
             $B.Add_Click({ 
                 $cmdLabel = $this.Text.Trim()
                 if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
@@ -533,4 +526,28 @@ function Apply-ThemeEngine {
     $tm = $THEMES[$Global:ActiveTheme]
     $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
     $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
-    $NotificationBar.BackColor =
+    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    
+    Render-Navigation
+    Render-Workspace
+}
+
+# --- THEME DROPDOWN SETUP ---
+$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
+$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
+$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
+$ThemeDropdown.Font = $FontBtn
+$ThemeDropdown.DropDownStyle = "DropDownList"
+foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
+$ThemeDropdown.SelectedItem = $Global:ActiveTheme
+$ThemeDropdown.Add_SelectedIndexChanged({
+    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
+    Apply-ThemeEngine
+    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
+})
+$TopHeader.Controls.Add($ThemeDropdown)
+
+# --- EXECUTION INITIALIZATION ---
+Apply-ThemeEngine
+Log "Advanced Windows Optimization Core Engine Environment Initialized."
+[System.Windows.Forms.Application]::Run($Form)
