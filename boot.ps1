@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FIXED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -212,7 +212,6 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
-    # background async pipeline execution
     $ScriptBlock = [scriptblock]::Create(@"
         $command | Invoke-Expression 2>&1
 "@)
@@ -220,7 +219,6 @@ function Run-Cmd($command, $title) {
     $PowershellAsync = [powershell]::Create().AddScript($ScriptBlock)
     $AsyncResult = $PowershellAsync.BeginInvoke()
     
-    # Timer to pull live data pipeline streams without locking UI thread
     $Timer = New-Object System.Windows.Forms.Timer
     $Timer.Interval = 150
     $Timer.Add_Tick({
@@ -362,7 +360,7 @@ function Show-NetworkUI {
             if (-not $n) { return }
             Update-Status "Sending active instructions to adapter pipeline node: $n"
             if ($act -eq "Disable") { Disable-NetAdapter -Name $n -Confirm:$false }
-            elif ($act -eq "Enable") { Enable-NetAdapter -Name $n -Confirm:$false }
+            elseif ($act -eq "Enable") { Enable-NetAdapter -Name $n -Confirm:$false }
             else { Restart-NetAdapter -Name $n -Confirm:$false }
             Update-Status "Successfully processed net interface target operation: $n"
             Render-Workspace
@@ -481,7 +479,7 @@ function Render-Navigation {
             $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
             $B.ForeColor = [System.Drawing.Color]::White
         } else {
-            $B.BackColor = [System.Drawing.Color::Transparent]
+            $B.BackColor = [System.Drawing.Color]::Transparent
             $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
         }
 
