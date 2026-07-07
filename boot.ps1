@@ -1,5 +1,5 @@
 # ========================================================================
-# SYSTEM ADMINISTRATION GUI UTILITY (STANDARD LOGGING)
+# ADVANCED SYSTEM ADMINISTRATION GUI UTILITY (MAIN ENGINE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
