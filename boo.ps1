@@ -1,71 +1,90 @@
-# Ensure script runs with elevated Administrative privileges
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$irm_script`"" -Verb RunAs
-    Exit
+# ========================================================================
+# SYSTEM ADMINISTRATION UTILITY TOOL
+# ========================================================================
+
+clear-host
+
+function Show-Menu {
+    Write-Host "==========================================" -ForegroundColor Indigo
+    Write-Host "       SYSTEM ADMINISTRATION TOOL          " -ForegroundColor White -BackgroundColor Indigo
+    Write-Host "==========================================" -ForegroundColor Indigo
+    Write-Host " 1." -ForegroundColor Indigo -NoNewline; Write-Host " View System & hardware Information"
+    Write-Host " 2." -ForegroundColor Indigo -NoNewline; Write-Host " Restart Printer Spooler Service"
+    Write-Host " 3." -ForegroundColor Indigo -NoNewline; Write-Host " View Network IP Configuration"
+    Write-Host " 4." -ForegroundColor Indigo -NoNewline; Write-Host " Clear Temp Files & Optimize System"
+    Write-Host " 5." -ForegroundColor Indigo -NoNewline; Write-Host " Exit"
+    Write-Host "==========================================" -ForegroundColor Indigo
 }
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-# --- UI WINDOW ROOT ---
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "Advanced Optimization Engine"
-$form.Size = New-Object System.Drawing.Size(500,450)
-$form.StartPosition = "CenterScreen"
-$form.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#F4F7F5") # Forest Sage BG
-
-# --- HEADER TITLE ---
-$title = New-Object System.Windows.Forms.Label
-$title.Text = "⚡ Action Sequences Dashboard"
-$title.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
-$title.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#15803D") # Forest Accent
-$title.Size = New-Object System.Drawing.Size(400,30)
-$title.Location = New-Object System.Drawing.Point(30,20)
-$form.Controls.Add($title)
-
-# --- HELPER FUNCTION TO GENERATE PROFESSIONAL BUTTONS ---
-function Create-AdminButton($text, $yPos, $scriptBlock) {
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = $text
-    $btn.Size = New-Object System.Drawing.Size(420, 40)
-    $btn.Location = New-Object System.Drawing.Point(30, $yPos)
-    $btn.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-    $btn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#FFFFFF")
-    $btn.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#1F2937")
-    $btn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $btn.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml("#15803D")
-    $btn.Cursor = [System.Windows.Forms.Cursors]::Hand
+function Get-SystemInfo {
+    clear-host
+    Write-Host "--- Fetching System Information ---`n" -ForegroundColor Indigo
+    $os = Get-CimInstance Win32_OperatingSystem
+    $cs = Get-CimInstance Win32_ComputerSystem
+    $cpu = Get-CimInstance Win32_Processor
     
-    $btn.Add_Click($scriptBlock)
-    $form.Controls.Add($btn)
+    Write-Host "Computer Name : " -NoNewline; Write-Host $cs.Name -ForegroundColor Cyan
+    Write-Host "OS Version    : " -NoNewline; Write-Host $os.Caption -ForegroundColor Cyan
+    Write-Host "Processor     : " -NoNewline; Write-Host $cpu.Name -ForegroundColor Cyan
+    Write-Host "Total Memory  : " -NoNewline; Write-Host "$([Math]::Round($cs.TotalPhysicalMemory / 1GB, 2)) GB" -ForegroundColor Cyan
+    Write-Host "`nPress any key to return to menu..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-# --- BUTTON 1: RESTART PRINTER SPOOLER ---
-Create-AdminButton "1. Restart Print Spooler Engine" 80 {
-    Write-Host "[ENGINE] Stopping Print Spooler..." -ForegroundColor Yellow
-    Stop-Service -Name "Spooler" -Force
-    Remove-Item "$env:SystemRoot\System32\Spool\Printers\*.*" -Force -ErrorAction SilentlyContinue
-    Start-Service -Name "Spooler"
-    [System.Windows.Forms.MessageBox]::Show("Print Spooler successfully recycled and caches cleared!", "Success")
+function Restart-Spooler {
+    clear-host
+    Write-Host "--- Restarting Printer Spooler ---`n" -ForegroundColor Indigo
+    try {
+        Write-Host "Stopping Print Spooler service..." -ForegroundColor Yellow
+        Stop-Service -Name "Spooler" -Force -ErrorAction Stop
+        Start-Sleep -Seconds 2
+        
+        Write-Host "Starting Print Spooler service..." -ForegroundColor Yellow
+        Start-Service -Name "Spooler" -ErrorAction Stop
+        Write-Host "`n[SUCCESS] Printer Spooler restarted successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "`n[ERROR] Failed to restart Spooler. Make sure you ran this as Administrator." -ForegroundColor Red
+    }
+    Write-Host "`nPress any key to return to menu..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-# --- BUTTON 2: SYSTEM INTEGRITY SCAN ---
-Create-AdminButton "2. Run SFC System Corruption Scan" 140 {
-    Write-Host "[ENGINE] Launching SFC Integrity Verification Chain..." -ForegroundColor Green
-    Start-Process cmd.exe -ArgumentList "/k sfc /scannow"
+function Get-IPConfig {
+    clear-host
+    Write-Host "--- Network Configuration ---`n" -ForegroundColor Indigo
+    Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -notlike "127*"} | Format-Table InterfaceAlias, IPAddress, IPv4Address -AutoSize
+    Write-Host "`nPress any key to return to menu..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-# --- BUTTON 3: FLUSH NETWORK DNS CACHE ---
-Create-AdminButton "3. Flush Local DNS Resolver Cache" 200 {
-    Clear-DnsClientCache
-    [System.Windows.Forms.MessageBox]::Show("DNS cache purged successfully.", "Network Notification")
+function Optimize-System {
+    clear-host
+    Write-Host "--- Clearing Temporary Files ---`n" -ForegroundColor Indigo
+    $tempPaths = @("$env:TEMP\*")
+    
+    foreach ($path in $tempPaths) {
+        try {
+            Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+        } catch {}
+    }
+    Write-Host "[SUCCESS] Temporary files cleared." -ForegroundColor Green
+    Write-Host "`nPress any key to return to menu..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-# --- BUTTON 4: OPTIMIZE POWER SCHEME ---
-Create-AdminButton "4. Force High Performance Power Scheme" 260 {
-    powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
-    [System.Windows.Forms.MessageBox]::Show("System shifted to High Performance Energy Matrix.", "Success")
-}
-
-# Display the layout view window
-$form.ShowDialog()
+# Main Loop Execution
+do {
+    clear-host
+    Show-Menu
+    $choice = Read-Host "`nSelect an option (1-5)"
+    
+    switch ($choice) {
+        '1' { Get-SystemInfo }
+        '2' { Restart-Spooler }
+        '3' { Get-IPConfig }
+        '4' { Optimize-System }
+        '5' { clear-host; Write-Host "Exiting tool. Goodbye!`n" -ForegroundColor Indigo; exit }
+        default { Write-Host "Invalid selection! Please try again." -ForegroundColor Red; Start-Sleep -Seconds 1 }
+    }
+} while ($true)
