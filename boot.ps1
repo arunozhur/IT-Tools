@@ -29,18 +29,18 @@ $CONFIG = @{
     )
 }
 
-# --- THEME ENGINE MATRIX ---
+# --- THEME ENGINE MATRIX (USING ARGB FOR IRM/IEX PARSING STABILITY) ---
 $THEMES = @{
-    "Forest Sage"      = @{ bg = "#F4F7F5"; card = "#FFFFFF"; accent = "#15803D"; hover = "#166534"; text = "#1F2937" }
-    "Slate Corporate"  = @{ bg = "#F8FAFC"; card = "#FFFFFF"; accent = "#1E3A8A"; hover = "#1E40AF"; text = "#0F172A" }
-    "Dark Cyberpunk"   = @{ bg = "#0B0F19"; card = "#161B22"; accent = "#00F0FF"; hover = "#00B8D4"; text = "#E2E8F0" }
-    "Nordic Frost"     = @{ bg = "#ECEFF4"; card = "#FFFFFF"; accent = "#5E81AC"; hover = "#81A1C1"; text = "#2E3440" }
-    "Obsidian Black"   = @{ bg = "#121212"; card = "#1E1E1E"; accent = "#BB86FC"; hover = "#3700B3"; text = "#FFFFFF" }
-    "Ocean Breeze"     = @{ bg = "#F0F7F7"; card = "#FFFFFF"; accent = "#0D9488"; hover = "#0F766E"; text = "#111827" }
-    "Steel Industrial" = @{ bg = "#F1F5F9"; card = "#FFFFFF"; accent = "#475569"; hover = "#334155"; text = "#0F172A" }
-    "Sunset Copper"    = @{ bg = "#FAF7F5"; card = "#FFFFFF"; accent = "#C2410C"; hover = "#9A3412"; text = "#1F2937" }
-    "Midnight Blue"    = @{ bg = "#0A0E1A"; card = "#121829"; accent = "#3B82F6"; hover = "#2563EB"; text = "#F8FAFC" }
-    "Dracula Accent"   = @{ bg = "#282A36"; card = "#44475A"; accent = "#BD93F9"; hover = "#FF79C6"; text = "#F8F8F2" }
+    "Forest Sage"      = @{ bg = [System.Drawing.Color]::FromArgb(244,247,245); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(21,128,61); text = [System.Drawing.Color]::FromArgb(31,41,55) }
+    "Slate Corporate"  = @{ bg = [System.Drawing.Color]::FromArgb(248,250,252); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(30,58,138); text = [System.Drawing.Color]::FromArgb(15,23,42) }
+    "Dark Cyberpunk"   = @{ bg = [System.Drawing.Color]::FromArgb(11,15,25); card = [System.Drawing.Color]::FromArgb(22,27,34); accent = [System.Drawing.Color]::FromArgb(0,240,255); text = [System.Drawing.Color]::FromArgb(226,232,240) }
+    "Nordic Frost"     = @{ bg = [System.Drawing.Color]::FromArgb(236,239,244); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(94,129,172); text = [System.Drawing.Color]::FromArgb(46,52,64) }
+    "Obsidian Black"   = @{ bg = [System.Drawing.Color]::FromArgb(18,18,18); card = [System.Drawing.Color]::FromArgb(30,30,30); accent = [System.Drawing.Color]::FromArgb(187,134,252); text = [System.Drawing.Color]::White }
+    "Ocean Breeze"     = @{ bg = [System.Drawing.Color]::FromArgb(240,247,247); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(13,148,136); text = [System.Drawing.Color]::FromArgb(17,24,39) }
+    "Steel Industrial" = @{ bg = [System.Drawing.Color]::FromArgb(241,253,249); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(71,85,105); text = [System.Drawing.Color]::FromArgb(15,23,42) }
+    "Sunset Copper"    = @{ bg = [System.Drawing.Color]::FromArgb(250,247,245); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(194,65,12); text = [System.Drawing.Color]::FromArgb(31,41,55) }
+    "Midnight Blue"    = @{ bg = [System.Drawing.Color]::FromArgb(10,14,26); card = [System.Drawing.Color]::FromArgb(18,24,41); accent = [System.Drawing.Color]::FromArgb(59,130,246); text = [System.Drawing.Color]::FromArgb(248,250,252) }
+    "Dracula Accent"   = @{ bg = [System.Drawing.Color]::FromArgb(40,42,54); card = [System.Drawing.Color]::FromArgb(68,71,90); accent = [System.Drawing.Color]::FromArgb(189,147,249); text = [System.Drawing.Color]::FromArgb(248,248,242) }
 }
 
 $Global:ActiveTheme = "Forest Sage"
@@ -94,7 +94,7 @@ $BottomStickyFrame.Controls.Add($NotificationBar)
 $NotificationText = New-Object System.Windows.Forms.Label
 $NotificationText.Text = "✓ Engine Status: Operational | Ready for Administration Sequence Tasks"
 $NotificationText.Font = $FontNotify
-$NotificationText.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#10B981")
+$NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(16,185,129)
 $NotificationText.Dock = "Fill"
 $NotificationText.TextAlign = "MiddleLeft"
 $NotificationBar.Controls.Add($NotificationText)
@@ -104,8 +104,8 @@ $ConsoleBox = New-Object System.Windows.Forms.TextBox
 $ConsoleBox.Multiline = $true
 $ConsoleBox.ScrollBars = "Vertical"
 $ConsoleBox.Font = $FontConsole
-$ConsoleBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#1E293B")
-$ConsoleBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#38BDF8")
+$ConsoleBox.BackColor = [System.Drawing.Color]::FromArgb(30,41,59)
+$ConsoleBox.ForeColor = [System.Drawing.Color]::FromArgb(56,189,248)
 $ConsoleBox.Height = 150
 $ConsoleBox.Dock = "Bottom"
 $ConsoleBox.ReadOnly = $true
@@ -120,9 +120,12 @@ function Log($msg) {
 
 function Update-Status($msg, $isError=$false) {
     $prefix = if ($isError) { "⚠ Error: " } else { "✓ Active: " }
-    $color = if ($isError) { "#F87171" } else { "#34D399" }
+    if ($isError) {
+        $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(248,113,113)
+    } else {
+        $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(52,211,153)
+    }
     $NotificationText.Text = "$prefix$msg"
-    $NotificationText.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($color)
     Log $msg
 }
 
@@ -193,13 +196,13 @@ function Run-Cmd($command, $title) {
 
     $TerminalPanel = New-Object System.Windows.Forms.Panel
     $TerminalPanel.Dock = "Fill"
-    $TerminalPanel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $TerminalPanel.BackColor = $tm.card
     $ContentWorkspace.Controls.Add($TerminalPanel)
 
     $HeaderLabel = New-Object System.Windows.Forms.Label
     $HeaderLabel.Text = $title
     $HeaderLabel.Font = $FontTitle
-    $HeaderLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $HeaderLabel.ForeColor = $tm.text
     $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
     $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
     $TerminalPanel.Controls.Add($HeaderLabel)
@@ -207,7 +210,7 @@ function Run-Cmd($command, $title) {
     $ReturnBtn = New-Object System.Windows.Forms.Button
     $ReturnBtn.Text = "← Return to Workspace"
     $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
     $ReturnBtn.ForeColor = [System.Drawing.Color]::White
     $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
     $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
@@ -220,8 +223,8 @@ function Run-Cmd($command, $title) {
     $OutBox.Multiline = $true
     $OutBox.ScrollBars = "Vertical"
     $OutBox.Font = $FontConsole
-    $OutBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
-    $OutBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
+    $OutBox.BackColor = [System.Drawing.Color]::FromArgb(15,23,42)
+    $OutBox.ForeColor = [System.Drawing.Color]::FromArgb(248,250,252)
     $OutBox.Location = New-Object System.Drawing.Point(20, 65)
     $OutBox.Size = New-Object System.Drawing.Size(1235, 440)
     $OutBox.ReadOnly = $true
@@ -280,13 +283,13 @@ function Trigger-Spooler {
     
     $Wrapper = New-Object System.Windows.Forms.Panel
     $Wrapper.Dock = "Fill"
-    $Wrapper.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $Wrapper.BackColor = $tm.card
     $ContentWorkspace.Controls.Add($Wrapper)
 
     $HeaderLabel = New-Object System.Windows.Forms.Label
     $HeaderLabel.Text = "Print Spooler Infrastructure System Service"
     $HeaderLabel.Font = $FontTitle
-    $HeaderLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $HeaderLabel.ForeColor = $tm.text
     $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
     $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
     $Wrapper.Controls.Add($HeaderLabel)
@@ -294,7 +297,7 @@ function Trigger-Spooler {
     $ReturnBtn = New-Object System.Windows.Forms.Button
     $ReturnBtn.Text = "← Return to Workspace"
     $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
     $ReturnBtn.ForeColor = [System.Drawing.Color]::White
     $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
     $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
@@ -306,8 +309,8 @@ function Trigger-Spooler {
     $StatusBox = New-Object System.Windows.Forms.TextBox
     $StatusBox.Multiline = $true
     $StatusBox.Font = $FontConsole
-    $StatusBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
-    $StatusBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
+    $StatusBox.BackColor = [System.Drawing.Color]::FromArgb(15,23,42)
+    $StatusBox.ForeColor = [System.Drawing.Color]::FromArgb(248,250,252)
     $StatusBox.Location = New-Object System.Drawing.Point(20, 70)
     $StatusBox.Size = New-Object System.Drawing.Size(1235, 435)
     $StatusBox.ReadOnly = $true
@@ -339,7 +342,7 @@ function Show-TimeoutUI {
     $ReturnBtn = New-Object System.Windows.Forms.Button
     $ReturnBtn.Text = "← Return to Workspace"
     $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
     $ReturnBtn.ForeColor = [System.Drawing.Color]::White
     $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 8)
     $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
@@ -351,13 +354,13 @@ function Show-TimeoutUI {
     $Panel = New-Object System.Windows.Forms.Panel
     $Panel.Size = New-Object System.Drawing.Size(500, 300)
     $Panel.Location = New-Object System.Drawing.Point(380, 100)
-    $Panel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $Panel.BackColor = $tm.card
     $ContentWorkspace.Controls.Add($Panel)
 
     $Label = New-Object System.Windows.Forms.Label
     $Label.Text = "Lock Screen Timeout Value Strategy"
     $Label.Font = $FontTitle
-    $Label.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label.ForeColor = $tm.text
     $Label.Size = New-Object System.Drawing.Size(460, 40)
     $Label.Location = New-Object System.Drawing.Point(20, 20)
     $Label.TextAlign = "Center"
@@ -372,7 +375,7 @@ function Show-TimeoutUI {
     $CommitBtn = New-Object System.Windows.Forms.Button
     $CommitBtn.Text = "Commit Threshold Metrics"
     $CommitBtn.Font = $FontBtn
-    $CommitBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+    $CommitBtn.BackColor = $tm.accent
     $CommitBtn.ForeColor = [System.Drawing.Color]::White
     $CommitBtn.Size = New-Object System.Drawing.Size(300, 40)
     $CommitBtn.Location = New-Object System.Drawing.Point(100, 170)
@@ -399,13 +402,13 @@ function Show-NetworkUI {
 
     $Panel = New-Object System.Windows.Forms.Panel
     $Panel.Dock = "Fill"
-    $Panel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $Panel.BackColor = $tm.card
     $ContentWorkspace.Controls.Add($Panel)
 
     $Label1 = New-Object System.Windows.Forms.Label
     $Label1.Text = "Identified System Interface Hardware profiles:"
     $Label1.Font = $FontTitle
-    $Label1.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label1.ForeColor = $tm.text
     $Label1.Location = New-Object System.Drawing.Point(20, 20)
     $Label1.Size = New-Object System.Drawing.Size(600, 30)
     $Panel.Controls.Add($Label1)
@@ -413,7 +416,7 @@ function Show-NetworkUI {
     $ReturnBtn = New-Object System.Windows.Forms.Button
     $ReturnBtn.Text = "← Return to Workspace"
     $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
     $ReturnBtn.ForeColor = [System.Drawing.Color]::White
     $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 20)
     $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
@@ -425,8 +428,8 @@ function Show-NetworkUI {
     $Box = New-Object System.Windows.Forms.TextBox
     $Box.Multiline = $true
     $Box.Font = $FontConsole
-    $Box.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-    $Box.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Box.BackColor = $tm.bg
+    $Box.ForeColor = $tm.text
     $Box.Location = New-Object System.Drawing.Point(20, 60)
     $Box.Size = New-Object System.Drawing.Size(1235, 130)
     $Box.ReadOnly = $true
@@ -437,7 +440,7 @@ function Show-NetworkUI {
     $Label2 = New-Object System.Windows.Forms.Label
     $Label2.Text = "Input targeted adapter label string precisely:"
     $Label2.Font = $FontBtn
-    $Label2.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label2.ForeColor = $tm.text
     $Label2.Location = New-Object System.Drawing.Point(20, 210)
     $Label2.Size = New-Object System.Drawing.Size(500, 25)
     $Panel.Controls.Add($Label2)
@@ -463,9 +466,9 @@ function Show-NetworkUI {
         $B.FlatAppearance.BorderSize = 0
         $B.ForeColor = [System.Drawing.Color]::White
         
-        if ($act -eq "Disable") { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444") }
-        elseif ($act -eq "Enable") { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#10B981") }
-        else { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent) }
+        if ($act -eq "Disable") { $B.BackColor = [System.Drawing.Color]::FromArgb(239,68,68) }
+        elseif ($act -eq "Enable") { $B.BackColor = [System.Drawing.Color]::FromArgb(16,185,129) }
+        else { $B.BackColor = $tm.accent }
 
         $B.Add_Click({
             $n = $Entry.Text.Trim()
@@ -490,13 +493,13 @@ function Render-Workspace {
     if ($Global:CurrentCategory -eq "Config") {
         $Wrapper = New-Object System.Windows.Forms.Panel
         $Wrapper.Dock = "Fill"
-        $Wrapper.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $Wrapper.BackColor = $tm.card
         $ContentWorkspace.Controls.Add($Wrapper)
 
         $TitleLbl = New-Object System.Windows.Forms.Label
         $TitleLbl.Text = "Legacy System Administration Panels"
         $TitleLbl.Font = $FontTitle
-        $TitleLbl.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $TitleLbl.ForeColor = $tm.text
         $TitleLbl.Location = New-Object System.Drawing.Point(20, 20)
         $TitleLbl.Size = New-Object System.Drawing.Size(500, 30)
         $Wrapper.Controls.Add($TitleLbl)
@@ -510,9 +513,9 @@ function Render-Workspace {
             $B.Location = New-Object System.Drawing.Point(20, $Y)
             $B.FlatStyle = "Flat"
             $B.TextAlign = "MiddleLeft"
-            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
-            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            $B.BackColor = $tm.bg
+            $B.ForeColor = $tm.text
+            $B.FlatAppearance.BorderColor = $tm.accent
             
             $B.Add_Click({ Resolve-Command $this.Text.Trim() })
             $Wrapper.Controls.Add($B)
@@ -522,19 +525,19 @@ function Render-Workspace {
         $LeftPanel = New-Object System.Windows.Forms.Panel
         $LeftPanel.Size = New-Object System.Drawing.Size(625, 520)
         $LeftPanel.Location = New-Object System.Drawing.Point(0, 0)
-        $LeftPanel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $LeftPanel.BackColor = $tm.card
         $ContentWorkspace.Controls.Add($LeftPanel)
 
         $RightPanel = New-Object System.Windows.Forms.Panel
         $RightPanel.Size = New-Object System.Drawing.Size(625, 520)
         $RightPanel.Location = New-Object System.Drawing.Point(650, 0)
-        $RightPanel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $RightPanel.BackColor = $tm.card
         $ContentWorkspace.Controls.Add($RightPanel)
 
         $LTitle = New-Object System.Windows.Forms.Label
         $LTitle.Text = "⚡ Action Sequences"
         $LTitle.Font = $FontTitle
-        $LTitle.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $LTitle.ForeColor = $tm.text
         $LTitle.Location = New-Object System.Drawing.Point(20, 20)
         $LTitle.Size = New-Object System.Drawing.Size(300, 30)
         $LeftPanel.Controls.Add($LTitle)
@@ -542,7 +545,7 @@ function Render-Workspace {
         $RTitle = New-Object System.Windows.Forms.Label
         $RTitle.Text = "🛠 Interface Preferences"
         $RTitle.Font = $FontTitle
-        $RTitle.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $RTitle.ForeColor = $tm.text
         $RTitle.Location = New-Object System.Drawing.Point(20, 20)
         $RTitle.Size = New-Object System.Drawing.Size(300, 30)
         $RightPanel.Controls.Add($RTitle)
@@ -566,9 +569,9 @@ function Render-Workspace {
             $B.Size = New-Object System.Drawing.Size(585, 40)
             $B.FlatStyle = "Flat"
             $B.TextAlign = "MiddleLeft"
-            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
-            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            $B.BackColor = $tm.bg
+            $B.ForeColor = $tm.text
+            $B.FlatAppearance.BorderColor = $tm.accent
             
             $B.Add_Click({ 
                 $cmdLabel = $this.Text.Trim()
@@ -604,50 +607,3 @@ function Render-Navigation {
         $B.Font = $FontTab
         $B.FlatStyle = "Flat"
         $B.FlatAppearance.BorderSize = 0
-        
-        if ($isActive) {
-            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
-            $B.ForeColor = [System.Drawing.Color]::White
-        } else {
-            $B.BackColor = [System.Drawing.Color]::Transparent
-            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
-        }
-
-        $B.Add_Click({
-            $Global:CurrentCategory = $this.Text
-            Apply-ThemeEngine
-            Update-Status "Switched view workspace focus context target to: $($this.Text)"
-        })
-        $TabContainer.Controls.Add($B)
-    }
-}
-
-function Apply-ThemeEngine {
-    $tm = $THEMES[$Global:ActiveTheme]
-    $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-    $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
-    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
-    
-    Render-Navigation
-    Render-Workspace
-}
-
-# --- THEME DROPDOWN SETUP ---
-$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
-$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
-$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
-$ThemeDropdown.Font = $FontBtn
-$ThemeDropdown.DropDownStyle = "DropDownList"
-foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
-$ThemeDropdown.SelectedItem = $Global:ActiveTheme
-$ThemeDropdown.Add_SelectedIndexChanged({
-    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
-    Apply-ThemeEngine
-    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
-})
-$TopHeader.Controls.Add($ThemeDropdown)
-
-# --- EXECUTION INITIALIZATION ---
-Apply-ThemeEngine
-Log "Advanced Windows Optimization Core Engine Environment Initialized."
-[System.Windows.Forms.Application]::Run($Form)
