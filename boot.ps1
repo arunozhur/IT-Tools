@@ -47,11 +47,33 @@ $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 $Global:OptimizeState = $false
 
+# --- BACKGROUND TASK SAFETY HANDLES ---
+$Global:ActiveProcess = $null
+$Global:ActiveTimer = $null
+
+function Reset-BackgroundPipeline {
+    if ($Global:ActiveTimer -ne $null) {
+        $Global:ActiveTimer.Stop()
+        $Global:ActiveTimer.Dispose()
+        $Global:ActiveTimer = $null
+    }
+    if ($Global:ActiveProcess -ne $null) {
+        try {
+            if (-not $Global:ActiveProcess.HasExited) {
+                Stop-Process -Id $Global:ActiveProcess.Id -Force -ErrorAction SilentlyContinue
+            }
+        } catch {}
+        $Global:ActiveProcess.Dispose()
+        $Global:ActiveProcess = $null
+    }
+}
+
 # --- MAIN WINDOW INTERFACE ---
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
 $Form.Size = New-Object System.Drawing.Size(1350, 900)
 $Form.StartPosition = "CenterScreen"
+$Form.Add_FormClosing({ Reset-BackgroundPipeline })
 
 # --- UI FONTS ---
 $FontTitle = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
@@ -145,6 +167,7 @@ function Toggle-Performance {
 # --- COMMAND DISPATCHER ---
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
+    Reset-BackgroundPipeline
     
     switch -wildcard ($txt) {
         "*computer management*" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
@@ -190,6 +213,7 @@ function Resolve-Command($label) {
 
 # --- TERMINAL EXECUTION PIPELINE ---
 function Run-Cmd($command, $title) {
+    Reset-BackgroundPipeline
     $ContentWorkspace.Controls.Clear()
     Update-Status "Executing Sequence: $title"
     $tm = $THEMES[$Global:ActiveTheme]
@@ -216,7 +240,10 @@ function Run-Cmd($command, $title) {
     $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
     $ReturnBtn.FlatStyle = "Flat"
     $ReturnBtn.FlatAppearance.BorderSize = 0
-    $ReturnBtn.Add_Click({ Render-Workspace })
+    $ReturnBtn.Add_Click({ 
+        Reset-BackgroundPipeline
+        Render-Workspace 
+    })
     $TerminalPanel.Controls.Add($ReturnBtn)
 
     $OutBox = New-Object System.Windows.Forms.TextBox
@@ -240,42 +267,59 @@ function Run-Cmd($command, $title) {
     $Psi.UseShellExecute = $false
     $Psi.CreateNoWindow = $true
 
-    $Proc = New-Object System.Diagnostics.Process
-    $Proc.StartInfo = $Psi
-    [void]$Proc.Start()
+    $Global:ActiveProcess = New-Object System.Diagnostics.Process
+    $Global:ActiveProcess.StartInfo = $Psi
+    
+    try {
+        [void]$Global:ActiveProcess.Start()
+    } catch {
+        Update-Status "Failed to initiate background diagnostic task pipeline." -isError $true
+        return
+    }
 
-    $Timer = New-Object System.Windows.Forms.Timer
-    $Timer.Interval = 100
-    $Timer.Add_Tick({
-        while (-not $Proc.StandardOutput.EndOfStream) {
-            $Line = $Proc.StandardOutput.ReadLine()
-            if ($Line -ne $null) {
+    $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
+    $Global:ActiveTimer.Interval = 100
+    $Global:ActiveTimer.Add_Tick({
+        if ($Global:ActiveProcess -eq $null -or $OutBox.IsDisposed) {
+            Reset-BackgroundPipeline
+            return
+        }
+
+        while (-not $Global:ActiveProcess.StandardOutput.EndOfStream) {
+            if ($OutBox.IsDisposed) { Reset-BackgroundPipeline; return }
+            $Line = $Global:ActiveProcess.StandardOutput.ReadLine()
+            if ($null -ne $Line) {
                 $OutBox.AppendText("$Line`r`n")
             }
             [System.Windows.Forms.Application]::DoEvents()
-            if ($Proc.StandardOutput.EndOfStream) { break }
+            if ($Global:ActiveProcess.StandardOutput.EndOfStream) { break }
         }
 
-        if (-not $Proc.StandardError.EndOfStream) {
-            $ErrLine = $Proc.StandardError.ReadLine()
-            if ($ErrLine -ne $null) {
-                $OutBox.AppendText("[ERROR] $ErrLine`r`n")
+        if (-not $Global:ActiveProcess.StandardError.EndOfStream) {
+            if (-not $OutBox.IsDisposed) {
+                $ErrLine = $Global:ActiveProcess.StandardError.ReadLine()
+                if ($null -ne $ErrLine) { $OutBox.AppendText("[ERROR] $ErrLine`r`n") }
             }
         }
 
-        if ($Proc.HasExited) {
-            $Timer.Stop()
-            $Remainder = $Proc.StandardOutput.ReadToEnd()
-            if ($Remainder) { $OutBox.AppendText($Remainder) }
-            $Proc.Close()
+        if ($Global:ActiveProcess.HasExited) {
+            $Global:ActiveTimer.Stop()
+            if (-not $OutBox.IsDisposed) {
+                $Remainder = $Global:ActiveProcess.StandardOutput.ReadToEnd()
+                if ($Remainder) { $OutBox.AppendText($Remainder) }
+                $OutBox.SelectionStart = $OutBox.Text.Length
+                $OutBox.ScrollToCaret()
+            }
+            Reset-BackgroundPipeline
             Update-Status "Completed execution sequence stack run: $title"
         }
     })
-    $Timer.Start()
+    $Global:ActiveTimer.Start()
 }
 
 # --- ACTION: RESTART SPOOLER ---
 function Trigger-Spooler {
+    Reset-BackgroundPipeline
     $ContentWorkspace.Controls.Clear()
     $tm = $THEMES[$Global:ActiveTheme]
     
@@ -329,6 +373,7 @@ function Trigger-Spooler {
 
 # --- INTERFACE: FORCE TIMEOUT UI ---
 function Show-TimeoutUI {
+    Reset-BackgroundPipeline
     $ContentWorkspace.Controls.Clear()
     $tm = $THEMES[$Global:ActiveTheme]
 
@@ -395,6 +440,7 @@ function Show-TimeoutUI {
 
 # --- INTERFACE: NETWORK MANAGEMENT UI ---
 function Show-NetworkUI {
+    Reset-BackgroundPipeline
     $ContentWorkspace.Controls.Clear()
     $tm = $THEMES[$Global:ActiveTheme]
 
@@ -612,6 +658,7 @@ function Render-Navigation {
         }
 
         $B.Add_Click({
+            Reset-BackgroundPipeline
             $Global:CurrentCategory = $this.Text
             Apply-ThemeEngine
             Update-Status "Switched view workspace focus context target to: $($this.Text)"
