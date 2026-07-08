@@ -1,12 +1,12 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V3.2 (CLEANED FIXES TAB)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V3.3 (ENHANCED HARDWARE REPORT)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
 
-# --- CONFIGURATION MATRIX (Fixes & Updates cleaned) ---
+# --- CONFIGURATION MATRIX ---
 $CONFIG = @{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
@@ -29,18 +29,34 @@ $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Loc
 
 function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
 
+# --- IMPROVED HARDWARE REPORT ---
+function Get-SystemHardwareInfo {
+    $ContentWorkspace.Controls.Clear()
+    $OS = Get-CimInstance Win32_OperatingSystem
+    $BIOS = Get-CimInstance Win32_BIOS
+    $CPU = Get-CimInstance Win32_Processor
+    $RAM = Get-CimInstance Win32_PhysicalMemory
+    $Array = Get-CimInstance Win32_PhysicalMemoryArray
+    $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
+    
+    # RAM Type Logic
+    $SMBIOS = $RAM[0].SMBIOSMemoryType
+    $RType = switch($SMBIOS) { 26 {"DDR4"} 34 {"DDR5"} 24 {"DDR3"} default {"Unknown/Other ($SMBIOS)"} }
+    
+    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RType`r`nSlots Total    : $($Array.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`nSlots Available: $($Array.MemoryDevices - $RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $($Disk.MediaType -eq 4 ? 'SSD / NVMe' : 'HDD')`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
+    
+    $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
+    $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
+}
+
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
     switch ($txt) {
-        # --- Fixes & Updates ---
-        "chkdsk scan"        { Run-Cmd "chkdsk C: /f /r" "Disk Check (Will prompt restart)" }
-        "restart explorer"   { Run-Cmd "taskkill /f /im explorer.exe && start explorer.exe" "Explorer Restarted" }
-        "clear dns resolver" { Run-Cmd "ipconfig /flushdns" "DNS Cache Cleared" }
-        "reset winsock"      { Run-Cmd "netsh winsock reset" "Winsock Reset" }
-
-        # --- Tweaks & Network (Reference) ---
         "system hardware report"    { Get-SystemHardwareInfo }
-        "restart spooler"           { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
+        "chkdsk scan"               { Run-Cmd "chkdsk C: /f /r" "Disk Check" }
+        "restart explorer"          { Run-Cmd "taskkill /f /im explorer.exe && start explorer.exe" "Explorer Restarted" }
+        "clear dns resolver"        { Run-Cmd "ipconfig /flushdns" "DNS Cache Cleared" }
+        "reset winsock"             { Run-Cmd "netsh winsock reset" "Winsock Reset" }
         "force screen timeout" {
             $minutes = [Microsoft.VisualBasic.Interaction]::InputBox("Enter duration (minutes):", "Screen Timeout", "60")
             if ($minutes -ne "") { $sec = [int]$minutes * 60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $sec && powercfg /setactive scheme_current" "Timeout Set" }
@@ -52,15 +68,6 @@ function Resolve-Command($label) {
         }
         default { Run-Cmd $txt $txt }
     }
-}
-
-function Get-SystemHardwareInfo {
-    $ContentWorkspace.Controls.Clear()
-    $BIOS = Get-CimInstance Win32_BIOS; $CPU = Get-CimInstance Win32_Processor; $RAM = Get-CimInstance Win32_PhysicalMemory; $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
-    $StorageType = "HDD"; if ($Disk.MediaType -eq 4) { $StorageType = "SSD / NVMe" }
-    $Report = "--- SYSTEM HARDWARE REPORT ---`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`nRAM Capacity   : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nStorage Type   : $StorageType`r`nModel          : $($Disk.Model)"
-    $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
-    $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
 }
 
 function Render-Workspace {
