@@ -227,8 +227,9 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
+    # Force strict Out-String mapping to ensure pure stream data capturing
     $ScriptBlock = [scriptblock]::Create(@"
-        $command | Invoke-Expression 2>&1
+        $command | Invoke-Expression | Out-String
 "@)
     
     $PowershellAsync = [powershell]::Create().AddScript($ScriptBlock)
@@ -240,7 +241,8 @@ function Run-Cmd($command, $title) {
         if ($AsyncResult.IsCompleted) {
             $Timer.Stop()
             $Output = $PowershellAsync.EndInvoke($AsyncResult)
-            foreach ($line in $Output) { $OutBox.AppendText("$line`r`n") }
+            # Render raw native pipeline safe stream block text updates directly
+            $OutBox.Text = [string]$Output
             Update-Status "Completed execution sequence stack run: $title"
             $PowershellAsync.Dispose()
         }
@@ -524,7 +526,6 @@ function Render-Workspace {
 
         $LY = 70; $RY = 70
         
-        # Calculate strict even split index threshold for clean dual panel columns
         $splitThreshold = [Math]::Ceiling($currentSubs.Count / 2)
         
         for ($i=0; $i -lt $currentSubs.Count; $i++) {
@@ -533,97 +534,4 @@ function Render-Workspace {
             
             if ($subText -eq "Optimize Performance") {
                 if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
-                else { $B.Text = "  Optimize Performance (Enable)" }
-            } else {
-                $B.Text = "  $subText"
-            }
-            
-            $B.Font = $FontBtn
-            $B.Size = New-Object System.Drawing.Size(585, 40)
-            $B.FlatStyle = "Flat"
-            $B.TextAlign = "MiddleLeft"
-            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
-            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
-            
-            $B.Add_Click({ 
-                $cmdLabel = $this.Text.Trim()
-                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
-                    Resolve-Command "Optimize Performance"
-                } else {
-                    Resolve-Command $cmdLabel
-                }
-            })
-
-            if ($i -lt $splitThreshold) {
-                $B.Location = New-Object System.Drawing.Point(20, $LY)
-                $LeftPanel.Controls.Add($B)
-                $LY += 50
-            } else {
-                $B.Location = New-Object System.Drawing.Point(20, $RY)
-                $RightPanel.Controls.Add($B)
-                $RY += 50
-            }
-        }
-    }
-}
-
-function Render-Navigation {
-    $TabContainer.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-
-    foreach ($category in $CONFIG.Keys) {
-        $isActive = ($category -eq $Global:CurrentCategory)
-        $B = New-Object System.Windows.Forms.Button
-        $B.Text = $category
-        $B.Size = New-Object System.Drawing.Size(150, 42)
-        $B.Font = $FontTab
-        $B.FlatStyle = "Flat"
-        $B.FlatAppearance.BorderSize = 0
-        
-        if ($isActive) {
-            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
-            $B.ForeColor = [System.Drawing.Color]::White
-        } else {
-            $B.BackColor = [System.Drawing.Color]::Transparent
-            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
-        }
-
-        $B.Add_Click({
-            $Global:CurrentCategory = $this.Text
-            Apply-ThemeEngine
-            Update-Status "Switched view workspace focus context target to: $($this.Text)"
-        })
-        $TabContainer.Controls.Add($B)
-    }
-}
-
-function Apply-ThemeEngine {
-    $tm = $THEMES[$Global:ActiveTheme]
-    $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
-    $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
-    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
-    
-    Render-Navigation
-    Render-Workspace
-}
-
-# --- THEME DROPDOWN SETUP ---
-$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
-$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
-$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
-$ThemeDropdown.Font = $FontBtn
-$ThemeDropdown.DropDownStyle = "DropDownList"
-foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
-$ThemeDropdown.SelectedItem = $Global:ActiveTheme
-$ThemeDropdown.Add_SelectedIndexChanged({
-    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
-    Apply-ThemeEngine
-    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
-})
-$TopHeader.Controls.Add($ThemeDropdown)
-
-# --- EXECUTION INITIALIZATION ---
-Apply-ThemeEngine
-Log "Advanced Windows Optimization Core Engine Environment Initialized."
-[System.Windows.Forms.Application]::Run($Form)
+                else {
