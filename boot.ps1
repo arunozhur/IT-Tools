@@ -185,10 +185,10 @@ function Resolve-Command($label) {
     }
 }
 
-# --- TERMINAL EXECUTION PIPELINE ---
+# --- TERMINAL EXECUTION PIPELINE (STABLE FILE STREAM TRACE) ---
 function Run-Cmd($command, $title) {
     $ContentWorkspace.Controls.Clear()
-    Update-Status "Executing automation run sequence: $title"
+    Update-Status "Executing Sequence: $title"
     $tm = $THEMES[$Global:ActiveTheme]
 
     $TerminalPanel = New-Object System.Windows.Forms.Panel
@@ -227,24 +227,47 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
-    # Use native Invoke-Expression tracking without structural pipeline breaks
-    $PowershellAsync = [powershell]::Create().AddScript($command)
-    $AsyncResult = $PowershellAsync.BeginInvoke()
+    # Temporary absolute file pointer setup for reliable redirection
+    $OutFile = Join-Path $env:TEMP "powershell_gui_stream_output.txt"
+    if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
+    "Initialising Engine Interfacer Trace...`r`n" | Out-File $OutFile
+
+    # Initialize external safe process shell wrapper
+    $Psi = New-Object System.Diagnostics.ProcessStartInfo
+    $Psi.FileName = "powershell.exe"
+    $Psi.Arguments = "-NoProfile -Command `"$command | Out-String | Out-File -FilePath '$OutFile' -Encoding utf8`""
+    $Psi.CreateNoWindow = $true
+    $Psi.UseShellExecute = $false
     
+    $Proc = New-Object System.Diagnostics.Process
+    $Proc.StartInfo = $Psi
+    [void]$Proc.Start()
+
+    # Form UI polling routine thread logic
     $Timer = New-Object System.Windows.Forms.Timer
-    $Timer.Interval = 200
+    $Timer.Interval = 250
     $Timer.Add_Tick({
-        if ($AsyncResult.IsCompleted) {
+        if (Test-Path $OutFile) {
+            try {
+                # Read using stream sharing to prevent lock constraints
+                $Stream = New-Object System.IO.FileStream($OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                $Reader = New-Object System.IO.StreamReader($Stream, [System.Text.Encoding]::UTF8)
+                $Txt = $Reader.ReadToEnd()
+                $Reader.Close()
+                $Stream.Close()
+                
+                if ($OutBox.Text -ne $Txt) {
+                    $OutBox.Text = $Txt
+                    $OutBox.SelectionStart = $OutBox.Text.Length
+                    $OutBox.ScrollToCaret()
+                }
+            } catch {}
+        }
+        
+        if ($Proc.HasExited) {
             $Timer.Stop()
-            $Output = $PowershellAsync.EndInvoke($AsyncResult)
-            if ($Output) {
-                $CleanText = ($Output | Out-String)
-                $OutBox.Text = $CleanText
-            } else {
-                $OutBox.Text = "Command completed with empty stdout engine data pipeline."
-            }
             Update-Status "Completed execution sequence stack run: $title"
-            $PowershellAsync.Dispose()
+            if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
         }
     })
     $Timer.Start()
