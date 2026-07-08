@@ -1,13 +1,13 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - FINAL VERSION 2.6
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.7 (REFINED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# --- CONFIGURATION MATRIX ---
+# --- CONFIGURATION MATRIX (Sticky Keys removed) ---
 $CONFIG = @{
-    "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Disable Sticky Keys", "Create Restore Point")
+    "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
     "Network Tools" = @("Network Adaptor", "IP Config Overview", "Ping Diagnostic (8.8.8.8)", "GP Update Force", "Network Reset Sequence", "Flush DNS Cache", "View Active Connections", "Firewall Status Check", "NTP Server Sync", "OpenSSH Server Enable")
     "Fixes & Updates" = @("Windows Update Reset", "WinGet Reinstall", "Rebuild Icon Cache", "Reset Windows Store", "Repair Component Store", "Chkdsk Scan", "Fix Package Manager", "Restart Explorer", "Clear DNS Resolver", "Reset Winsock")
@@ -16,19 +16,15 @@ $CONFIG = @{
 # --- GUI SETTINGS ---
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
-
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
 $Form.Size = New-Object System.Drawing.Size(1350, 900)
 $Form.StartPosition = "CenterScreen"
 $FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 
-$TopHeader = New-Object System.Windows.Forms.Panel
-$TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
-$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel
-$TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
-$ContentWorkspace = New-Object System.Windows.Forms.Panel
-$ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
+$TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
+$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
+$ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
 
 # --- FUNCTIONS ---
 function Get-SystemHardwareInfo {
@@ -58,14 +54,15 @@ function Resolve-Command($label) {
         "system properties"      { Start-Process "sysdm.cpl" }
         "time and date"          { Start-Process "timedate.cpl" }
         
-        # Tweaks
+        # Tweaks (FIXED)
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
-        "force screen timeout"   { Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoconlock 60" "Screen Timeout Set" }
+        "force screen timeout"   { Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle 60 && powercfg /setactive scheme_current" "Screen Timeout Set to 60s" }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
         "clear temp files"       { Run-Cmd "del /q /f /s %temp%\* && del /q /f /s C:\Windows\Temp\*" "Temp Files Purge" }
+        "optimize performance"   { Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "High Performance Mode Set" }
         "enable long paths"      { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Long Paths Enabled" }
         
-        # Fixes & Updates
+        # Fixes
         "windows update reset"   { Run-Cmd "net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Update Reset" }
         "winget reinstall"       { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Restore" }
         "reset winsock"          { Run-Cmd "netsh winsock reset" "Winsock Reset" }
