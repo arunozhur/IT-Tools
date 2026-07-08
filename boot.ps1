@@ -52,18 +52,17 @@ $Global:ActiveProcess = $null
 $Global:ActiveTimer = $null
 
 function Reset-BackgroundPipeline {
-    if ($Global:ActiveTimer -ne $null) {
-        $Global:ActiveTimer.Stop()
-        $Global:ActiveTimer.Dispose()
+    if ($null -ne $Global:ActiveTimer) {
+        try { $Global:ActiveTimer.Stop(); $Global:ActiveTimer.Dispose() } catch {}
         $Global:ActiveTimer = $null
     }
-    if ($Global:ActiveProcess -ne $null) {
+    if ($null -ne $Global:ActiveProcess) {
         try {
             if (-not $Global:ActiveProcess.HasExited) {
                 Stop-Process -Id $Global:ActiveProcess.Id -Force -ErrorAction SilentlyContinue
             }
         } catch {}
-        $Global:ActiveProcess.Dispose()
+        try { $Global:ActiveProcess.Dispose() } catch {}
         $Global:ActiveProcess = $null
     }
 }
@@ -135,19 +134,23 @@ $BottomStickyFrame.Controls.Add($ConsoleBox)
 
 # --- LOG ENGINE ---
 function Log($msg) {
-    $ConsoleBox.AppendText("[ENGINE]: $msg`r`n")
-    $ConsoleBox.SelectionStart = $ConsoleBox.Text.Length
-    $ConsoleBox.ScrollToCaret()
+    if ($null -ne $ConsoleBox -and -not $ConsoleBox.IsDisposed) {
+        $ConsoleBox.AppendText("[ENGINE]: $msg`r`n")
+        $ConsoleBox.SelectionStart = $ConsoleBox.Text.Length
+        $ConsoleBox.ScrollToCaret()
+    }
 }
 
 function Update-Status($msg, $isError=$false) {
-    $prefix = if ($isError) { "⚠ Error: " } else { "✓ Active: " }
-    if ($isError) {
-        $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(248,113,113)
-    } else {
-        $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(52,211,153)
+    if ($null -ne $NotificationText -and -not $NotificationText.IsDisposed) {
+        $prefix = if ($isError) { "⚠ Error: " } else { "✓ Active: " }
+        if ($isError) {
+            $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(248,113,113)
+        } else {
+            $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(52,211,153)
+        }
+        $NotificationText.Text = "$prefix$msg"
     }
-    $NotificationText.Text = "$prefix$msg"
     Log $msg
 }
 
@@ -280,38 +283,47 @@ function Run-Cmd($command, $title) {
     $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
     $Global:ActiveTimer.Interval = 100
     $Global:ActiveTimer.Add_Tick({
-        if ($Global:ActiveProcess -eq $null -or $OutBox.IsDisposed) {
+        # --- ROBUST SAFETY INTEGRITY MATRIX ---
+        if ($null -eq $Global:ActiveProcess -or $null -eq $OutBox -or $OutBox.IsDisposed) {
             Reset-BackgroundPipeline
             return
         }
 
-        while (-not $Global:ActiveProcess.StandardOutput.EndOfStream) {
-            if ($OutBox.IsDisposed) { Reset-BackgroundPipeline; return }
-            $Line = $Global:ActiveProcess.StandardOutput.ReadLine()
-            if ($null -ne $Line) {
-                $OutBox.AppendText("$Line`r`n")
+        try {
+            # Stream reader allocation check
+            if ($null -ne $Global:ActiveProcess.StandardOutput -and -not $Global:ActiveProcess.StandardOutput.EndOfStream) {
+                while (-not $Global:ActiveProcess.StandardOutput.EndOfStream) {
+                    if ($OutBox.IsDisposed) { Reset-BackgroundPipeline; return }
+                    $Line = $Global:ActiveProcess.StandardOutput.ReadLine()
+                    if ($null -ne $Line) {
+                        $OutBox.AppendText("$Line`r`n")
+                    }
+                    [System.Windows.Forms.Application]::DoEvents()
+                    if ($null -eq $Global:ActiveProcess -or $Global:ActiveProcess.StandardOutput.EndOfStream) { break }
+                }
             }
-            [System.Windows.Forms.Application]::DoEvents()
-            if ($Global:ActiveProcess.StandardOutput.EndOfStream) { break }
-        }
 
-        if (-not $Global:ActiveProcess.StandardError.EndOfStream) {
-            if (-not $OutBox.IsDisposed) {
-                $ErrLine = $Global:ActiveProcess.StandardError.ReadLine()
-                if ($null -ne $ErrLine) { $OutBox.AppendText("[ERROR] $ErrLine`r`n") }
+            if ($null -ne $Global:ActiveProcess -and $null -ne $Global:ActiveProcess.StandardError -and -not $Global:ActiveProcess.StandardError.EndOfStream) {
+                if (-not $OutBox.IsDisposed) {
+                    $ErrLine = $Global:ActiveProcess.StandardError.ReadLine()
+                    if ($null -ne $ErrLine) { $OutBox.AppendText("[ERROR] $ErrLine`r`n") }
+                }
             }
-        }
 
-        if ($Global:ActiveProcess.HasExited) {
-            $Global:ActiveTimer.Stop()
-            if (-not $OutBox.IsDisposed) {
-                $Remainder = $Global:ActiveProcess.StandardOutput.ReadToEnd()
-                if ($Remainder) { $OutBox.AppendText($Remainder) }
-                $OutBox.SelectionStart = $OutBox.Text.Length
-                $OutBox.ScrollToCaret()
+            if ($null -ne $Global:ActiveProcess -and $Global:ActiveProcess.HasExited) {
+                $Global:ActiveTimer.Stop()
+                if (-not $OutBox.IsDisposed) {
+                    $Remainder = $Global:ActiveProcess.StandardOutput.ReadToEnd()
+                    if ($Remainder) { $OutBox.AppendText($Remainder) }
+                    $OutBox.SelectionStart = $OutBox.Text.Length
+                    $OutBox.ScrollToCaret()
+                }
+                Reset-BackgroundPipeline
+                Update-Status "Completed execution sequence stack run: $title"
             }
+        } catch {
+            # Absorb transient asynchronous context pipeline errors safely
             Reset-BackgroundPipeline
-            Update-Status "Completed execution sequence stack run: $title"
         }
     })
     $Global:ActiveTimer.Start()
@@ -637,6 +649,7 @@ function Render-Workspace {
 }
 
 function Render-Navigation {
+    if ($null -eq $TabContainer -or $TabContainer.IsDisposed) { return }
     $TabContainer.Controls.Clear()
     $tm = $THEMES[$Global:ActiveTheme]
 
@@ -669,9 +682,9 @@ function Render-Navigation {
 
 function Apply-ThemeEngine {
     $tm = $THEMES[$Global:ActiveTheme]
-    $Form.BackColor = $tm.bg
-    $TopHeader.BackColor = $tm.card
-    $NotificationBar.BackColor = [System.Drawing.Color]::FromArgb(15,23,42)
+    if ($null -ne $Form -and -not $Form.IsDisposed) { $Form.BackColor = $tm.bg }
+    if ($null -ne $TopHeader -and -not $TopHeader.IsDisposed) { $TopHeader.BackColor = $tm.card }
+    if ($null -ne $NotificationBar -and -not $NotificationBar.IsDisposed) { $NotificationBar.BackColor = [System.Drawing.Color]::FromArgb(15,23,42) }
     
     Render-Navigation
     Render-Workspace
