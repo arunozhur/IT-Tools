@@ -1,12 +1,12 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V5.2 (STABLE)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V6.0 (FINAL STABLE VERSION)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
 
-$CONFIG = @{
+$CONFIG = [ordered]@{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date", "Check for Updates")
     "Automation" = @("Schedule Shutdown", "Schedule Restart", "Cancel Scheduled Task")
@@ -16,8 +16,7 @@ $CONFIG = @{
 
 $Global:CurrentCategory = "Config"
 
-# --- CORE FUNCTIONS ---
-
+# --- FUNCTIONS ---
 function Run-Cmd($command, $title) { 
     Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" 
 }
@@ -76,5 +75,6 @@ foreach ($cat in $CONFIG.Keys) {
     $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(150, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
 }
 
+# --- RUN ---
 Render-Workspace
 [System.Windows.Forms.Application]::Run($Form)
