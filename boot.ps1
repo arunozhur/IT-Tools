@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.4 (STABLE)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - FINAL VERSION
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -13,18 +13,16 @@ $CONFIG = @{
     "Fixes & Updates" = @("Windows Update Reset", "WinGet Reinstall", "Rebuild Icon Cache", "Reset Windows Store", "Repair Component Store", "Chkdsk Scan", "Fix Package Manager", "Restart Explorer", "Clear DNS Resolver", "Reset Winsock")
 }
 
-# --- THEME ENGINE ---
+# --- GUI SETTINGS ---
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 
-# --- MAIN FORM ---
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
 $Form.Size = New-Object System.Drawing.Size(1350, 900)
 $Form.StartPosition = "CenterScreen"
 $FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 
-# --- UI CONTAINERS ---
 $TopHeader = New-Object System.Windows.Forms.Panel
 $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
 
@@ -34,27 +32,23 @@ $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.
 $ContentWorkspace = New-Object System.Windows.Forms.Panel
 $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
 
-# --- HARDWARE REPORT LOGIC ---
+# --- FUNCTIONS ---
 function Get-SystemHardwareInfo {
     $ContentWorkspace.Controls.Clear()
     $BIOS = Get-CimInstance Win32_BIOS; $CPU = Get-CimInstance Win32_Processor; $RAM = Get-CimInstance Win32_PhysicalMemory; $Slots = Get-CimInstance Win32_PhysicalMemoryArray; $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
-    
     $RAMType = if ($RAM[0].SMBIOSMemoryType -eq 26) { "DDR4" } elseif ($RAM[0].SMBIOSMemoryType -eq 34) { "DDR5" } else { "Unknown" }
     $DType = if ($Disk.MediaType -eq 4) { "SSD / NVMe" } else { "HDD" }
-
     $Report = "--- SYSTEM HARDWARE REPORT ---`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RAMType`r`nSlots Total    : $($Slots.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $DType`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
-
-    $Box = New-Object System.Windows.Forms.TextBox
-    $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
+    $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
     $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
 }
 
-# --- COMMAND EXECUTION ---
 function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
 
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
     switch ($txt) {
+        # Config
         "system hardware report" { Get-SystemHardwareInfo }
         "computer management"    { Start-Process "compmgmt.msc" }
         "control panel"          { Start-Process "control" }
@@ -65,20 +59,25 @@ function Resolve-Command($label) {
         "sound settings"         { Start-Process "mmsys.cpl" }
         "system properties"      { Start-Process "sysdm.cpl" }
         "time and date"          { Start-Process "timedate.cpl" }
+        # Tweaks
+        "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
+        "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
+        "clear temp files"       { Run-Cmd "del /q/f/s %TEMP%\*" "Temp Cleanup" }
+        # Fixes & Updates
+        "windows update reset"   { Run-Cmd "net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Update Reset" }
+        "winget reinstall"       { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Restore" }
+        "reset winsock"          { Run-Cmd "netsh winsock reset" "Winsock Reset" }
         default                  { Run-Cmd $txt $txt }
     }
 }
 
-# --- RENDER GUI ---
 function Render-Workspace {
-    $ContentWorkspace.Controls.Clear()
-    $Y = 20
+    $ContentWorkspace.Controls.Clear(); $Y = 20
     foreach ($subText in $CONFIG[$Global:CurrentCategory]) {
         $B = New-Object System.Windows.Forms.Button; $B.Text = $subText; $B.Size = New-Object System.Drawing.Size(300, 40); $B.Location = New-Object System.Drawing.Point(20, $Y); $B.Font = $FontBtn; $B.Add_Click({ Resolve-Command $this.Text }); $ContentWorkspace.Controls.Add($B); $Y += 50
     }
 }
 
-# --- NAVIGATION ---
 foreach ($cat in $CONFIG.Keys) {
     $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(150, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
 }
