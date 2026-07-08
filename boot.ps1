@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - FINAL VERSION
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - FINAL VERSION 2.6
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -25,10 +25,8 @@ $FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontSt
 
 $TopHeader = New-Object System.Windows.Forms.Panel
 $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
-
 $TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel
 $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
-
 $ContentWorkspace = New-Object System.Windows.Forms.Panel
 $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
 
@@ -59,15 +57,20 @@ function Resolve-Command($label) {
         "sound settings"         { Start-Process "mmsys.cpl" }
         "system properties"      { Start-Process "sysdm.cpl" }
         "time and date"          { Start-Process "timedate.cpl" }
+        
         # Tweaks
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
+        "force screen timeout"   { Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoconlock 60" "Screen Timeout Set" }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
-        "clear temp files"       { Run-Cmd "del /q/f/s %TEMP%\*" "Temp Cleanup" }
+        "clear temp files"       { Run-Cmd "del /q /f /s %temp%\* && del /q /f /s C:\Windows\Temp\*" "Temp Files Purge" }
+        "enable long paths"      { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Long Paths Enabled" }
+        
         # Fixes & Updates
         "windows update reset"   { Run-Cmd "net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Update Reset" }
         "winget reinstall"       { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Restore" }
         "reset winsock"          { Run-Cmd "netsh winsock reset" "Winsock Reset" }
-        default                  { Run-Cmd $txt $txt }
+        
+        default { Run-Cmd $txt $txt }
     }
 }
 
