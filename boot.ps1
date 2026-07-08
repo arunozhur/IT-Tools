@@ -129,11 +129,11 @@ function Update-Status($msg, $isError=$false) {
 # --- PERFORMANCE TOGGLE LOGIC ---
 function Toggle-Performance {
     if ($Global:OptimizeState) {
-        Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Restore Balanced Power Management Mode"
+        Resolve-Command "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e"
         $Global:OptimizeState = $false
         Update-Status "Performance Mode Disabled (Switched to Balanced)"
     } else {
-        Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "Enable High Performance Power Engine Mode"
+        Resolve-Command "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
         $Global:OptimizeState = $true
         Update-Status "High Performance Power Mode Enabled"
     }
@@ -188,7 +188,7 @@ function Resolve-Command($label) {
 # --- TERMINAL EXECUTION PIPELINE ---
 function Run-Cmd($command, $title) {
     $ContentWorkspace.Controls.Clear()
-    Update-Status "Executing automation run sequence command architecture trace: $title"
+    Update-Status "Executing automation run sequence: $title"
     $tm = $THEMES[$Global:ActiveTheme]
 
     $TerminalPanel = New-Object System.Windows.Forms.Panel
@@ -227,22 +227,22 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
-    # Force strict Out-String mapping to ensure pure stream data capturing
-    $ScriptBlock = [scriptblock]::Create(@"
-        $command | Invoke-Expression | Out-String
-"@)
-    
-    $PowershellAsync = [powershell]::Create().AddScript($ScriptBlock)
+    # Use native Invoke-Expression tracking without structural pipeline breaks
+    $PowershellAsync = [powershell]::Create().AddScript($command)
     $AsyncResult = $PowershellAsync.BeginInvoke()
     
     $Timer = New-Object System.Windows.Forms.Timer
-    $Timer.Interval = 150
+    $Timer.Interval = 200
     $Timer.Add_Tick({
         if ($AsyncResult.IsCompleted) {
             $Timer.Stop()
             $Output = $PowershellAsync.EndInvoke($AsyncResult)
-            # Render raw native pipeline safe stream block text updates directly
-            $OutBox.Text = [string]$Output
+            if ($Output) {
+                $CleanText = ($Output | Out-String)
+                $OutBox.Text = $CleanText
+            } else {
+                $OutBox.Text = "Command completed with empty stdout engine data pipeline."
+            }
             Update-Status "Completed execution sequence stack run: $title"
             $PowershellAsync.Dispose()
         }
@@ -534,4 +534,97 @@ function Render-Workspace {
             
             if ($subText -eq "Optimize Performance") {
                 if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
-                else {
+                else { $B.Text = "  Optimize Performance (Enable)" }
+            } else {
+                $B.Text = "  $subText"
+            }
+            
+            $B.Font = $FontBtn
+            $B.Size = New-Object System.Drawing.Size(585, 40)
+            $B.FlatStyle = "Flat"
+            $B.TextAlign = "MiddleLeft"
+            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            
+            $B.Add_Click({ 
+                $cmdLabel = $this.Text.Trim()
+                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
+                    Resolve-Command "Optimize Performance"
+                } else {
+                    Resolve-Command $cmdLabel
+                }
+            })
+
+            if ($i -lt $splitThreshold) {
+                $B.Location = New-Object System.Drawing.Point(20, $LY)
+                $LeftPanel.Controls.Add($B)
+                $LY += 50
+            } else {
+                $B.Location = New-Object System.Drawing.Point(20, $RY)
+                $RightPanel.Controls.Add($B)
+                $RY += 50
+            }
+        }
+    }
+}
+
+function Render-Navigation {
+    $TabContainer.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+
+    foreach ($category in $CONFIG.Keys) {
+        $isActive = ($category -eq $Global:CurrentCategory)
+        $B = New-Object System.Windows.Forms.Button
+        $B.Text = $category
+        $B.Size = New-Object System.Drawing.Size(150, 42)
+        $B.Font = $FontTab
+        $B.FlatStyle = "Flat"
+        $B.FlatAppearance.BorderSize = 0
+        
+        if ($isActive) {
+            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            $B.ForeColor = [System.Drawing.Color]::White
+        } else {
+            $B.BackColor = [System.Drawing.Color]::Transparent
+            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        }
+
+        $B.Add_Click({
+            $Global:CurrentCategory = $this.Text
+            Apply-ThemeEngine
+            Update-Status "Switched view workspace focus context target to: $($this.Text)"
+        })
+        $TabContainer.Controls.Add($B)
+    }
+}
+
+function Apply-ThemeEngine {
+    $tm = $THEMES[$Global:ActiveTheme]
+    $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+    $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    
+    Render-Navigation
+    Render-Workspace
+}
+
+# --- THEME DROPDOWN SETUP ---
+$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
+$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
+$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
+$ThemeDropdown.Font = $FontBtn
+$ThemeDropdown.DropDownStyle = "DropDownList"
+foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
+$ThemeDropdown.SelectedItem = $Global:ActiveTheme
+$ThemeDropdown.Add_SelectedIndexChanged({
+    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
+    Apply-ThemeEngine
+    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
+})
+$TopHeader.Controls.Add($ThemeDropdown)
+
+# --- EXECUTION INITIALIZATION ---
+Apply-ThemeEngine
+Log "Advanced Windows Optimization Core Engine Environment Initialized."
+[System.Windows.Forms.Application]::Run($Form)
