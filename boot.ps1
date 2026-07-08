@@ -46,7 +46,9 @@ $THEMES = @{
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 $Global:OptimizeState = $false
-$Global:OutFile = Join-Path $env:TEMP "powershell_gui_stream_output.txt"
+
+# Thread-Safe Shared Buffer Matrix for Real-Time Terminal Streaming
+$Global:TerminalBuffer = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
 # --- MAIN ARTIFACT WINDOW ---
 $Form = New-Object System.Windows.Forms.Form
@@ -186,7 +188,7 @@ function Resolve-Command($label) {
     }
 }
 
-# --- TERMINAL EXECUTION PIPELINE (STABLE FILE STREAM TRACE) ---
+# --- TERMINAL EXECUTION PIPELINE (ASYNCHRONOUS DOTNET PIPELINE) ---
 function Run-Cmd($command, $title) {
     $ContentWorkspace.Controls.Clear()
     Update-Status "Executing Sequence: $title"
@@ -228,46 +230,61 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
-    # Clean existing file securely before deployment
-    if ($Global:OutFile -and (Test-Path $Global:OutFile)) { Remove-Item $Global:OutFile -Force -ErrorAction SilentlyContinue }
-    "Initialising Engine Interfacer Trace...`r`n" | Out-File $Global:OutFile
+    # Reset Thread Buffer
+    $Global:TerminalBuffer.Clear()
+    $OutBox.Text = "Initializing Core Stream Matrix Architecture...`r`n"
 
-    # Initialize external safe process shell wrapper
+    # Native System Execution Profile
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "powershell.exe"
-    $Psi.Arguments = "-NoProfile -Command `"$command | Out-String | Out-File -FilePath '$Global:OutFile' -Encoding utf8`""
-    $Psi.CreateNoWindow = $true
+    $Psi.Arguments = "-NoProfile -Command `"$command`""
+    $Psi.RedirectStandardOutput = $true
+    $Psi.RedirectStandardError = $true
     $Psi.UseShellExecute = $false
-    
+    $Psi.CreateNoWindow = $true
+
     $Proc = New-Object System.Diagnostics.Process
     $Proc.StartInfo = $Psi
-    [void]$Proc.Start()
 
-    # Form UI polling routine thread logic with validation safeguards
-    $Timer = New-Object System.Windows.Forms.Timer
-    $Timer.Interval = 250
-    $Timer.Add_Tick({
-        if ($Global:OutFile -and (Test-Path $Global:OutFile)) {
-            try {
-                # Read using stream sharing to prevent lock constraints
-                $Stream = New-Object System.IO.FileStream($Global:OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                $Reader = New-Object System.IO.StreamReader($Stream, [System.Text.Encoding]::UTF8)
-                $Txt = $Reader.ReadToEnd()
-                $Reader.Close()
-                $Stream.Close()
-                
-                if ($OutBox.Text -ne $Txt) {
-                    $OutBox.Text = $Txt
-                    $OutBox.SelectionStart = $OutBox.Text.Length
-                    $OutBox.ScrollToCaret()
-                }
-            } catch {}
+    # Register Engine Management Object Events asynchronously
+    $OutEvent = Register-ObjectEvent -InputObject $Proc -EventName "OutputDataReceived" -Action {
+        if ($event.SourceEventArgs.Data -ne $null) {
+            [void]$Global:TerminalBuffer.Add($event.SourceEventArgs.Data)
         }
-        
+    }
+    $ErrEvent = Register-ObjectEvent -InputObject $Proc -EventName "ErrorDataReceived" -Action {
+        if ($event.SourceEventArgs.Data -ne $null) {
+            [void]$Global:TerminalBuffer.Add("[ERROR] " + $event.SourceEventArgs.Data)
+        }
+    }
+
+    [void]$Proc.Start()
+    $Proc.BeginOutputReadLine()
+    $Proc.BeginErrorReadLine()
+
+    # Form Engine UI Dispatch Polling Timer
+    $Timer = New-Object System.Windows.Forms.Timer
+    $Timer.Interval = 150
+    $Timer.Add_Tick({
+        if ($Global:TerminalBuffer.Count -gt 0) {
+            # Sync lock extraction to prevent cross thread block anomalies
+            $Snapshot = $Global:TerminalBuffer.ToArray()
+            $Global:TerminalBuffer.Clear()
+            
+            foreach ($Line in $Snapshot) {
+                $OutBox.AppendText("$Line`r`n")
+            }
+            $OutBox.SelectionStart = $OutBox.Text.Length
+            $OutBox.ScrollToCaret()
+        }
+
         if ($Proc.HasExited) {
             $Timer.Stop()
+            # Clean events structure completely
+            Unregister-Event -SourceIdentifier $OutEvent.Name -ErrorAction SilentlyContinue
+            Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
+            $Proc.Close()
             Update-Status "Completed execution sequence stack run: $title"
-            if ($Global:OutFile -and (Test-Path $Global:OutFile)) { Remove-Item $Global:OutFile -Force -ErrorAction SilentlyContinue }
         }
     })
     $Timer.Start()
