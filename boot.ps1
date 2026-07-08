@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V7.0 (FINAL UNIFIED VERSION)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V7.1 (STABLE & COMPATIBLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -29,7 +29,13 @@ function Get-SystemHardwareInfo {
     $RAM = Get-CimInstance Win32_PhysicalMemory
     $Array = Get-CimInstance Win32_PhysicalMemoryArray
     $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
-    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nCPU            : $($CPU.Name)`r`nRAM Capacity   : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nSlots Used     : $($RAM.Count)`r`nStorage Type   : $($Disk.MediaType -eq 4 ? 'SSD' : 'HDD')"
+    
+    # Ternary ഒഴിവാക്കി സാധാരണ IF ഉപയോഗിക്കുന്നു
+    $SType = "HDD"
+    if ($Disk.MediaType -eq 4) { $SType = "SSD" }
+    
+    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nCPU            : $($CPU.Name)`r`nRAM Capacity   : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nSlots Used     : $($RAM.Count)`r`nStorage Type   : $SType"
+    
     $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
     $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
 }
@@ -49,7 +55,7 @@ function Resolve-Command($label) {
         "schedule shutdown"      { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Shutdown", "3600"); if($t){Run-Cmd "shutdown /s /t $t" "Shutdown Scheduled"} }
         "schedule restart"       { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Restart", "3600"); if($t){Run-Cmd "shutdown /r /t $t" "Restart Scheduled"} }
         "cancel scheduled task"  { Run-Cmd "shutdown /a" "Tasks Cancelled" }
-        "view shutdown/restart log" { Run-Cmd "eventvwr.msc /c:System" "Opening System Event Log (Look for Event ID 1074)" }
+        "view shutdown/restart log" { Run-Cmd "eventvwr.msc /c:System" "System Event Log (ID 1074)" }
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
         "force screen timeout"   { $min = [Microsoft.VisualBasic.Interaction]::InputBox("Minutes:", "Timeout", "60"); if($min){$s=[int]$min*60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $s && powercfg /setactive scheme_current" "Timeout Set"} }
         "optimize performance"   { $c = [System.Windows.Forms.MessageBox]::Show("Yes: High Perf, No: Balanced", "Mode", 4); if($c -eq 6){Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "High Perf"}elseif($c -eq 7){Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Balanced"} }
