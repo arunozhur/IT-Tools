@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE FIXED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (CMD POPUP FIXED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -183,7 +183,7 @@ function Resolve-Command($label) {
         "*spooler*"             { Trigger-Spooler }
         "*timeout*"             { Show-TimeoutUI }
         "*corruption scan*"     { Run-Cmd "sfc /scannow" "SFC System Integrity Target" }
-        "*clear temp files*"    { Run-Cmd "cmd.exe /c del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
+        "*clear temp files*"    { Run-Cmd "del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
         "*performance*"         { Toggle-Performance }
         "*long paths*"          { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Win32 Naming Path Extension Limit Lifted" }
         "*sticky keys*"         { Run-Cmd 'reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f' "Sticky Keys System Interrupter Disabled" }
@@ -192,184 +192,48 @@ function Resolve-Command($label) {
         "*ip config*"           { Run-Cmd "ipconfig /all" "IP Protocol Configuration Matrix" }
         "*ping diagnostic*"     { Run-Cmd "ping 8.8.8.8" "ICMP Destination Core Ping Stream" }
         "*gp update*"           { Run-Cmd "gpupdate /force" "Group Policy Policy Refresh Optimization" }
-        "*network reset*"       { Run-Cmd "cmd.exe /c netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
+        "*network reset*"       { Run-Cmd "netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
         "*flush dns*"           { Run-Cmd "ipconfig /flushdns" "DNS Resolver Local Cache Purge" }
         "*active connections*"  { Run-Cmd "netstat -an" "Active Inter-Network Route Monitor Output" }
         "*firewall status*"     { Run-Cmd "netsh advfirewall show allprofiles" "Windows Defender Security Firewall Verification" }
         "*ntp server*"          { Run-Cmd "w32tm /resync" "System Hardware Time NTP Synchronization Sequence" }
         "*openssh server*"      { Run-Cmd "powershell -Command Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0" "Deploy and Bind Local Secure Shell Architecture" }
-        "*windows update reset*" { Run-Cmd "cmd.exe /c net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
+        "*windows update reset*" { Run-Cmd "net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
         "*winget reinstall*"    { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Package Manager Deployment Restoration" }
-        "*rebuild icon cache*"  { Run-Cmd "cmd.exe /c ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
+        "*rebuild icon cache*"  { Run-Cmd "ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
         "*windows store*"       { Run-Cmd "wsreset.exe" "Microsoft Store Architecture Cache Clearing Matrix" }
         "*component store*"     { Run-Cmd "DISM /Online /Cleanup-Image /RestoreHealth" "Deployment Image Servicing Engine Optimization Sync" }
         "*chkdsk scan*"         { Run-Cmd "chkdsk C: /f /r /x" "NTFS File Allocation Index Sector Validation Task" }
         "*package manager*"     { Run-Cmd "dism /online /cleanup-image /startcomponentcleanup" "WinSxS Side-by-Side Component Library Optimization" }
-        "*restart explorer*"    { Run-Cmd "cmd.exe /c taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
+        "*restart explorer*"    { Run-Cmd "taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
         "*dns resolver*"        { Run-Cmd "ipconfig /registerdns" "Network Registration Handle Updates Initiated" }
         "*winsock*"             { Run-Cmd "netsh winsock reset catalog" "Winsock API Layer Catalog Protocol Reset Pipeline" }
         default                 { Update-Status "Command triggered: $label" }
     }
 }
 
-# --- TERMINAL EXECUTION PIPELINE ---
+# --- TERMINAL EXECUTION PIPELINE (NATIVE CMD POPUP) ---
 function Run-Cmd($command, $title) {
     Reset-BackgroundPipeline
-    $ContentWorkspace.Controls.Clear()
-    Update-Status "Executing Sequence: $title"
-    $tm = $THEMES[$Global:ActiveTheme]
+    Update-Status "Launching Native Command Prompt: $title"
 
-    $TerminalPanel = New-Object System.Windows.Forms.Panel
-    $TerminalPanel.Dock = "Fill"
-    $TerminalPanel.BackColor = $tm.card
-    $ContentWorkspace.Controls.Add($TerminalPanel)
-
-    $HeaderLabel = New-Object System.Windows.Forms.Label
-    $HeaderLabel.Text = $title
-    $HeaderLabel.Font = $FontTitle
-    $HeaderLabel.ForeColor = $tm.text
-    $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
-    $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
-    $TerminalPanel.Controls.Add($HeaderLabel)
-
-    $ReturnBtn = New-Object System.Windows.Forms.Button
-    $ReturnBtn.Text = "← Return to Workspace"
-    $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
-    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
-    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
-    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
-    $ReturnBtn.FlatStyle = "Flat"
-    $ReturnBtn.FlatAppearance.BorderSize = 0
-    $ReturnBtn.Add_Click({ 
-        Reset-BackgroundPipeline
-        Render-Workspace 
-    })
-    $TerminalPanel.Controls.Add($ReturnBtn)
-
-    $OutBox = New-Object System.Windows.Forms.TextBox
-    $OutBox.Multiline = $true
-    $OutBox.ScrollBars = "Vertical"
-    $OutBox.Font = $FontConsole
-    $OutBox.BackColor = [System.Drawing.Color]::FromArgb(15,23,42)
-    $OutBox.ForeColor = [System.Drawing.Color]::FromArgb(248,250,252)
-    $OutBox.Location = New-Object System.Drawing.Point(20, 65)
-    $OutBox.Size = New-Object System.Drawing.Size(1235, 440)
-    $OutBox.ReadOnly = $true
-    $TerminalPanel.Controls.Add($OutBox)
-
-    $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
-
-    $Global:LogReaderIndex = 0
-    if (Test-Path $Global:TempLogPath) { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue }
-    "Initial Session Bind Validation Sequence Operational." | Out-File $Global:TempLogPath -Encoding utf8
-
-    $Psi = New-Object System.Diagnostics.ProcessStartInfo
-    $Psi.FileName = "cmd.exe"
-    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command 2>&1 | Tee-Object -FilePath '$Global:TempLogPath' -Append`""
-    $Psi.UseShellExecute = $false
-    $Psi.CreateNoWindow = $true
-
-    $Global:ActiveProcess = New-Object System.Diagnostics.Process
-    $Global:ActiveProcess.StartInfo = $Psi
-    
+    # Opens a clean native cmd window. '/k' ensures it stays open for verification.
     try {
-        [void]$Global:ActiveProcess.Start()
+        Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === EXECUTING: $title === && echo. && $command" -NoNewWindow:$false
+        Update-Status "Successfully spawned external console for: $title"
     } catch {
-        Update-Status "Failed to initiate background diagnostic task pipeline." -isError $true
-        return
+        Update-Status "Failed to initiate external command execution terminal." -isError $true
     }
-
-    $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
-    $Global:ActiveTimer.Interval = 200
-    $Global:ActiveTimer.Add_Tick({
-        if ($null -eq $OutBox -or $OutBox.IsDisposed) {
-            Reset-BackgroundPipeline
-            return
-        }
-        try {
-            if (Test-Path $Global:TempLogPath) {
-                $Lines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
-                if ($null -ne $Lines -and $Lines.Count -gt $Global:LogReaderIndex) {
-                    for ($i = $Global:LogReaderIndex; $i -lt $Lines.Count; $i++) {
-                        if ($null -ne $Lines[$i]) { $OutBox.AppendText($Lines[$i] + "`r`n") }
-                    }
-                    $Global:LogReaderIndex = $Lines.Count
-                    $OutBox.SelectionStart = $OutBox.Text.Length
-                    $OutBox.ScrollToCaret()
-                }
-            }
-        } catch {}
-
-        if ($null -eq $Global:ActiveProcess -or $Global:ActiveProcess.HasExited) {
-            $Global:ActiveTimer.Stop()
-            try {
-                if (Test-Path $Global:TempLogPath) {
-                    $FinalLines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
-                    if ($null -ne $FinalLines -and $FinalLines.Count -gt $Global:LogReaderIndex) {
-                        for ($i = $Global:LogReaderIndex; $i -lt $FinalLines.Count; $i++) { $OutBox.AppendText($FinalLines[$i] + "`r`n") }
-                    }
-                }
-            } catch {}
-            Reset-BackgroundPipeline
-            Update-Status "Completed execution sequence stack run: $title"
-        }
-    })
-    $Global:ActiveTimer.Start()
 }
 
 # --- ACTION: RESTART SPOOLER ---
 function Trigger-Spooler {
     Reset-BackgroundPipeline
-    $ContentWorkspace.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
+    Update-Status "Executing Spooler Recycling Matrix via Native Console..."
     
-    $Wrapper = New-Object System.Windows.Forms.Panel
-    $Wrapper.Dock = "Fill"
-    $Wrapper.BackColor = $tm.card
-    $ContentWorkspace.Controls.Add($Wrapper)
-
-    $HeaderLabel = New-Object System.Windows.Forms.Label
-    $HeaderLabel.Text = "Print Spooler Infrastructure System Service"
-    $HeaderLabel.Font = $FontTitle
-    $HeaderLabel.ForeColor = $tm.text
-    $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
-    $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
-    $Wrapper.Controls.Add($HeaderLabel)
-
-    $ReturnBtn = New-Object System.Windows.Forms.Button
-    $ReturnBtn.Text = "← Return to Workspace"
-    $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
-    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
-    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
-    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
-    $ReturnBtn.FlatStyle = "Flat"
-    $ReturnBtn.FlatAppearance.BorderSize = 0
-    $ReturnBtn.Add_Click({ Render-Workspace })
-    $Wrapper.Controls.Add($ReturnBtn)
-
-    $StatusBox = New-Object System.Windows.Forms.TextBox
-    $StatusBox.Multiline = $true
-    $StatusBox.Font = $FontConsole
-    $StatusBox.BackColor = [System.Drawing.Color]::FromArgb(15,23,42)
-    $StatusBox.ForeColor = [System.Drawing.Color]::FromArgb(248,250,252)
-    $StatusBox.Location = New-Object System.Drawing.Point(20, 70)
-    $StatusBox.Size = New-Object System.Drawing.Size(1235, 435)
-    $StatusBox.ReadOnly = $true
-    $Wrapper.Controls.Add($StatusBox)
-
-    Update-Status "Terminating dynamic printing subsystem task allocations..."
-    $StatusBox.AppendText("[PROCESS] Halting Print Spooler service structure...`r`n")
-    Stop-Service -Name "Spooler" -Force
-    
-    $StatusBox.AppendText("[PROCESS] Purging local memory print pipeline caches...`r`n")
-    Get-ChildItem -Path "$env:systemroot\System32\Spool\Printers\*" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
-    
-    $StatusBox.AppendText("[PROCESS] Re-initializing subsystem engine handles...`r`n")
-    Start-Service -Name "Spooler"
-    $StatusBox.AppendText("[SUCCESS] Dynamic service framework is now fully restored and stable.`r`n")
-    Update-Status "Print spooler subsystem engine fully restored and online."
+    # Run Spooler task inside visibility scope of a clean prompt window
+    $SpoolerCommands = "echo === Restoring Print Spooler Subsystem === && echo. && echo [1/3] Stopping Service... && net stop Spooler /y && echo [2/3] Purging Printer Caches... && del /Q /F /S `"%systemroot%\System32\Spool\Printers\*`" && echo [3/3] Starting Service... && net start Spooler && echo. && echo === Process Complete ==="
+    Run-Cmd $SpoolerCommands "Print Spooler Infrastructure Recovery"
 }
 
 # --- INTERFACE: FORCE TIMEOUT UI ---
