@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.2 (FULL GUI RESTORED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.4 (STABLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -14,9 +14,6 @@ $CONFIG = @{
 }
 
 # --- THEME ENGINE ---
-$THEMES = @{
-    "Forest Sage" = @{ bg = [System.Drawing.Color]::FromArgb(244,247,245); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(21,128,61); text = [System.Drawing.Color]::FromArgb(31,41,55) }
-}
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 
@@ -25,8 +22,6 @@ $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
 $Form.Size = New-Object System.Drawing.Size(1350, 900)
 $Form.StartPosition = "CenterScreen"
-
-$FontTitle = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
 $FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 
 # --- UI CONTAINERS ---
@@ -59,10 +54,18 @@ function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k t
 
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
-    switch -wildcard ($txt) {
-        "*system hardware report*" { Get-SystemHardwareInfo }
-        "*computer management*"    { Start-Process "compmgmt.msc" }
-        default                    { Run-Cmd $txt $txt }
+    switch ($txt) {
+        "system hardware report" { Get-SystemHardwareInfo }
+        "computer management"    { Start-Process "compmgmt.msc" }
+        "control panel"          { Start-Process "control" }
+        "network connections"    { Start-Process "ncpa.cpl" }
+        "power panel"            { Start-Process "control" "powercfg.cpl" }
+        "printer panel"          { Start-Process "control" "printers" }
+        "region"                 { Start-Process "intl.cpl" }
+        "sound settings"         { Start-Process "mmsys.cpl" }
+        "system properties"      { Start-Process "sysdm.cpl" }
+        "time and date"          { Start-Process "timedate.cpl" }
+        default                  { Run-Cmd $txt $txt }
     }
 }
 
@@ -75,6 +78,7 @@ function Render-Workspace {
     }
 }
 
+# --- NAVIGATION ---
 foreach ($cat in $CONFIG.Keys) {
     $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(150, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
 }
