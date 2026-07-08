@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (CMD POPUP FIXED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (CMD FIXED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -212,14 +212,15 @@ function Resolve-Command($label) {
     }
 }
 
-# --- TERMINAL EXECUTION PIPELINE (NATIVE CMD POPUP) ---
+# --- TERMINAL EXECUTION PIPELINE (NATIVE CMD POPUP - FIXED) ---
 function Run-Cmd($command, $title) {
     Reset-BackgroundPipeline
     Update-Status "Launching Native Command Prompt: $title"
 
-    # Opens a clean native cmd window. '/k' ensures it stays open for verification.
+    # Safely building arguments context string to bypass formatting locks
     try {
-        Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === EXECUTING: $title === && echo. && $command" -NoNewWindow:$false
+        $Arguments = "/k `"title $title && echo === EXECUTING: $title === && echo. && $command`""
+        Start-Process "cmd.exe" -ArgumentList $Arguments -NoNewWindow:$false
         Update-Status "Successfully spawned external console for: $title"
     } catch {
         Update-Status "Failed to initiate external command execution terminal." -isError $true
