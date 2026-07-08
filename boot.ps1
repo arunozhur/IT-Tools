@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE MATRIX)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FINAL STABLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -137,14 +137,12 @@ function Toggle-Performance {
         $Global:OptimizeState = $true
         Update-Status "High Performance Power Mode Enabled"
     }
-    Render-Workspace
 }
 
 # --- COMMAND DISPATCHER ---
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
     
-    # Safe Wildcard Matching Matrix to support all labels cleanly
     switch -wildcard ($txt) {
         "*computer management*" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
         "*control panel*"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
@@ -252,11 +250,54 @@ function Run-Cmd($command, $title) {
 
 # --- ACTION: RESTART SPOOLER ---
 function Trigger-Spooler {
+    $ContentWorkspace.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+    
+    $Wrapper = New-Object System.Windows.Forms.Panel
+    $Wrapper.Dock = "Fill"
+    $Wrapper.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $ContentWorkspace.Controls.Add($Wrapper)
+
+    $HeaderLabel = New-Object System.Windows.Forms.Label
+    $HeaderLabel.Text = "Print Spooler Infrastructure System Service"
+    $HeaderLabel.Font = $FontTitle
+    $HeaderLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
+    $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
+    $Wrapper.Controls.Add($HeaderLabel)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $Wrapper.Controls.Add($ReturnBtn)
+
+    $StatusBox = New-Object System.Windows.Forms.TextBox
+    $StatusBox.Multiline = $true
+    $StatusBox.Font = $FontConsole
+    $StatusBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    $StatusBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
+    $StatusBox.Location = New-Object System.Drawing.Point(20, 70)
+    $StatusBox.Size = New-Object System.Drawing.Size(1235, 435)
+    $StatusBox.ReadOnly = $true
+    $Wrapper.Controls.Add($StatusBox)
+
     Update-Status "Terminating dynamic printing subsystem task allocations..."
+    $StatusBox.AppendText("[PROCESS] Halting Print Spooler service structure...`r`n")
     Stop-Service -Name "Spooler" -Force
-    Log "Purging memory caches and lingering corrupt workspace structures..."
+    
+    $StatusBox.AppendText("[PROCESS] Purging local memory print pipeline caches...`r`n")
     Get-ChildItem -Path "$env:systemroot\System32\Spool\Printers\*" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+    
+    $StatusBox.AppendText("[PROCESS] Re-initializing subsystem engine handles...`r`n")
     Start-Service -Name "Spooler"
+    $StatusBox.AppendText("[SUCCESS] Dynamic service framework is now fully restored and stable.`r`n")
     Update-Status "Print spooler subsystem engine fully restored and online."
 }
 
@@ -264,6 +305,23 @@ function Trigger-Spooler {
 function Show-TimeoutUI {
     $ContentWorkspace.Controls.Clear()
     $tm = $THEMES[$Global:ActiveTheme]
+
+    $TopPanel = New-Object System.Windows.Forms.Panel
+    $TopPanel.Height = 50
+    $TopPanel.Dock = "Top"
+    $ContentWorkspace.Controls.Add($TopPanel)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 8)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $TopPanel.Controls.Add($ReturnBtn)
 
     $Panel = New-Object System.Windows.Forms.Panel
     $Panel.Size = New-Object System.Drawing.Size(500, 300)
@@ -326,6 +384,18 @@ function Show-NetworkUI {
     $Label1.Location = New-Object System.Drawing.Point(20, 20)
     $Label1.Size = New-Object System.Drawing.Size(600, 30)
     $Panel.Controls.Add($Label1)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 20)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $Panel.Controls.Add($ReturnBtn)
 
     $Box = New-Object System.Windows.Forms.TextBox
     $Box.Multiline = $true
@@ -453,6 +523,10 @@ function Render-Workspace {
         $RightPanel.Controls.Add($RTitle)
 
         $LY = 70; $RY = 70
+        
+        # Calculate strict even split index threshold for clean dual panel columns
+        $splitThreshold = [Math]::Ceiling($currentSubs.Count / 2)
+        
         for ($i=0; $i -lt $currentSubs.Count; $i++) {
             $subText = $currentSubs[$i]
             $B = New-Object System.Windows.Forms.Button
@@ -472,9 +546,16 @@ function Render-Workspace {
             $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
             $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
             
-            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
+            $B.Add_Click({ 
+                $cmdLabel = $this.Text.Trim()
+                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
+                    Resolve-Command "Optimize Performance"
+                } else {
+                    Resolve-Command $cmdLabel
+                }
+            })
 
-            if ($i -lt 5) {
+            if ($i -lt $splitThreshold) {
                 $B.Location = New-Object System.Drawing.Point(20, $LY)
                 $LeftPanel.Controls.Add($B)
                 $LY += 50
