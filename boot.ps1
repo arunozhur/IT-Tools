@@ -29,7 +29,7 @@ $CONFIG = @{
     )
 }
 
-# --- THEME ENGINE MATRIX (USING ARGB FOR IRM/IEX PARSING STABILITY) ---
+# --- THEME ENGINE MATRIX ---
 $THEMES = @{
     "Forest Sage"      = @{ bg = [System.Drawing.Color]::FromArgb(244,247,245); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(21,128,61); text = [System.Drawing.Color]::FromArgb(31,41,55) }
     "Slate Corporate"  = @{ bg = [System.Drawing.Color]::FromArgb(248,250,252); card = [System.Drawing.Color]::White; accent = [System.Drawing.Color]::FromArgb(30,58,138); text = [System.Drawing.Color]::FromArgb(15,23,42) }
@@ -47,7 +47,7 @@ $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 $Global:OptimizeState = $false
 
-# --- MAIN ARTIFACT WINDOW ---
+# --- MAIN WINDOW INTERFACE ---
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
 $Form.Size = New-Object System.Drawing.Size(1350, 900)
@@ -188,7 +188,7 @@ function Resolve-Command($label) {
     }
 }
 
-# --- TERMINAL EXECUTION PIPELINE (STABLE NON-BLOCKING STREAM READ) ---
+# --- TERMINAL EXECUTION PIPELINE ---
 function Run-Cmd($command, $title) {
     $ContentWorkspace.Controls.Clear()
     Update-Status "Executing Sequence: $title"
@@ -232,7 +232,6 @@ function Run-Cmd($command, $title) {
 
     $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
 
-    # Native Safe Process Definition Block
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "cmd.exe"
     $Psi.Arguments = "/c powershell -NoProfile -Command `"$command`""
@@ -245,7 +244,6 @@ function Run-Cmd($command, $title) {
     $Proc.StartInfo = $Psi
     [void]$Proc.Start()
 
-    # Form UI Synchronization Polling Timer (Pure Main UI Thread Safe Integration)
     $Timer = New-Object System.Windows.Forms.Timer
     $Timer.Interval = 100
     $Timer.Add_Tick({
@@ -378,232 +376,4 @@ function Show-TimeoutUI {
     $CommitBtn.BackColor = $tm.accent
     $CommitBtn.ForeColor = [System.Drawing.Color]::White
     $CommitBtn.Size = New-Object System.Drawing.Size(300, 40)
-    $CommitBtn.Location = New-Object System.Drawing.Point(100, 170)
-    $CommitBtn.FlatStyle = "Flat"
-    $CommitBtn.FlatAppearance.BorderSize = 0
-    $CommitBtn.Add_Click({
-        $s = $Entry.Text.Trim()
-        if ($s -match "^\d+$") {
-            powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOCONLOCK $s
-            powercfg /SETACTIVE SCHEME_CURRENT
-            Update-Status "Synchronized lockout thresholds to $s seconds."
-            Render-Workspace
-        } else {
-            Update-Status "Invalid structural input configuration value." -isError $true
-        }
-    })
-    $Panel.Controls.Add($CommitBtn)
-}
-
-# --- INTERFACE: NETWORK MANAGEMENT UI ---
-function Show-NetworkUI {
-    $ContentWorkspace.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-
-    $Panel = New-Object System.Windows.Forms.Panel
-    $Panel.Dock = "Fill"
-    $Panel.BackColor = $tm.card
-    $ContentWorkspace.Controls.Add($Panel)
-
-    $Label1 = New-Object System.Windows.Forms.Label
-    $Label1.Text = "Identified System Interface Hardware profiles:"
-    $Label1.Font = $FontTitle
-    $Label1.ForeColor = $tm.text
-    $Label1.Location = New-Object System.Drawing.Point(20, 20)
-    $Label1.Size = New-Object System.Drawing.Size(600, 30)
-    $Panel.Controls.Add($Label1)
-
-    $ReturnBtn = New-Object System.Windows.Forms.Button
-    $ReturnBtn.Text = "← Return to Workspace"
-    $ReturnBtn.Font = $FontBtn
-    $ReturnBtn.BackColor = [System.Drawing.Color]::FromArgb(239,68,68)
-    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
-    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 20)
-    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
-    $ReturnBtn.FlatStyle = "Flat"
-    $ReturnBtn.FlatAppearance.BorderSize = 0
-    $ReturnBtn.Add_Click({ Render-Workspace })
-    $Panel.Controls.Add($ReturnBtn)
-
-    $Box = New-Object System.Windows.Forms.TextBox
-    $Box.Multiline = $true
-    $Box.Font = $FontConsole
-    $Box.BackColor = $tm.bg
-    $Box.ForeColor = $tm.text
-    $Box.Location = New-Object System.Drawing.Point(20, 60)
-    $Box.Size = New-Object System.Drawing.Size(1235, 130)
-    $Box.ReadOnly = $true
-    $Adapters = Get-NetAdapter | Select-Object -ExpandProperty Name
-    $Box.Text = $Adapters -join "`r`n"
-    $Panel.Controls.Add($Box)
-
-    $Label2 = New-Object System.Windows.Forms.Label
-    $Label2.Text = "Input targeted adapter label string precisely:"
-    $Label2.Font = $FontBtn
-    $Label2.ForeColor = $tm.text
-    $Label2.Location = New-Object System.Drawing.Point(20, 210)
-    $Label2.Size = New-Object System.Drawing.Size(500, 25)
-    $Panel.Controls.Add($Label2)
-
-    $Entry = New-Object System.Windows.Forms.TextBox
-    $Entry.Size = New-Object System.Drawing.Size(400, 35)
-    $Entry.Location = New-Object System.Drawing.Point(20, 240)
-    $Entry.Font = $FontBtn
-    $Panel.Controls.Add($Entry)
-
-    $BtnFrame = New-Object System.Windows.Forms.FlowLayoutPanel
-    $BtnFrame.Location = New-Object System.Drawing.Point(20, 300)
-    $BtnFrame.Size = New-Object System.Drawing.Size(800, 60)
-    $Panel.Controls.Add($BtnFrame)
-
-    $Actions = @("Disable", "Enable", "Restart")
-    foreach ($act in $Actions) {
-        $B = New-Object System.Windows.Forms.Button
-        $B.Text = if ($act -eq "Restart") { "Power-Cycle Interfacer" } else { "$act Path" }
-        $B.Font = $FontBtn
-        $B.Size = New-Object System.Drawing.Size(220, 40)
-        $B.FlatStyle = "Flat"
-        $B.FlatAppearance.BorderSize = 0
-        $B.ForeColor = [System.Drawing.Color]::White
-        
-        if ($act -eq "Disable") { $B.BackColor = [System.Drawing.Color]::FromArgb(239,68,68) }
-        elseif ($act -eq "Enable") { $B.BackColor = [System.Drawing.Color]::FromArgb(16,185,129) }
-        else { $B.BackColor = $tm.accent }
-
-        $B.Add_Click({
-            $n = $Entry.Text.Trim()
-            if (-not $n) { return }
-            Update-Status "Sending active instructions to adapter pipeline node: $n"
-            if ($act -eq "Disable") { Disable-NetAdapter -Name $n -Confirm:$false }
-            elseif ($act -eq "Enable") { Enable-NetAdapter -Name $n -Confirm:$false }
-            else { Restart-NetAdapter -Name $n -Confirm:$false }
-            Update-Status "Successfully processed net interface target operation: $n"
-            Render-Workspace
-        })
-        $BtnFrame.Controls.Add($B)
-    }
-}
-
-# --- CORE RENDER ENGINES ---
-function Render-Workspace {
-    $ContentWorkspace.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-    $currentSubs = $CONFIG[$Global:CurrentCategory]
-
-    if ($Global:CurrentCategory -eq "Config") {
-        $Wrapper = New-Object System.Windows.Forms.Panel
-        $Wrapper.Dock = "Fill"
-        $Wrapper.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($Wrapper)
-
-        $TitleLbl = New-Object System.Windows.Forms.Label
-        $TitleLbl.Text = "Legacy System Administration Panels"
-        $TitleLbl.Font = $FontTitle
-        $TitleLbl.ForeColor = $tm.text
-        $TitleLbl.Location = New-Object System.Drawing.Point(20, 20)
-        $TitleLbl.Size = New-Object System.Drawing.Size(500, 30)
-        $Wrapper.Controls.Add($TitleLbl)
-
-        $Y = 70
-        foreach ($subText in $currentSubs) {
-            $B = New-Object System.Windows.Forms.Button
-            $B.Text = "  $subText"
-            $B.Font = $FontBtn
-            $B.Size = New-Object System.Drawing.Size(1235, 38)
-            $B.Location = New-Object System.Drawing.Point(20, $Y)
-            $B.FlatStyle = "Flat"
-            $B.TextAlign = "MiddleLeft"
-            $B.BackColor = $tm.bg
-            $B.ForeColor = $tm.text
-            $B.FlatAppearance.BorderColor = $tm.accent
-            
-            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
-            $Wrapper.Controls.Add($B)
-            $Y += 44
-        }
-    } else {
-        $LeftPanel = New-Object System.Windows.Forms.Panel
-        $LeftPanel.Size = New-Object System.Drawing.Size(625, 520)
-        $LeftPanel.Location = New-Object System.Drawing.Point(0, 0)
-        $LeftPanel.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($LeftPanel)
-
-        $RightPanel = New-Object System.Windows.Forms.Panel
-        $RightPanel.Size = New-Object System.Drawing.Size(625, 520)
-        $RightPanel.Location = New-Object System.Drawing.Point(650, 0)
-        $RightPanel.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($RightPanel)
-
-        $LTitle = New-Object System.Windows.Forms.Label
-        $LTitle.Text = "⚡ Action Sequences"
-        $LTitle.Font = $FontTitle
-        $LTitle.ForeColor = $tm.text
-        $LTitle.Location = New-Object System.Drawing.Point(20, 20)
-        $LTitle.Size = New-Object System.Drawing.Size(300, 30)
-        $LeftPanel.Controls.Add($LTitle)
-
-        $RTitle = New-Object System.Windows.Forms.Label
-        $RTitle.Text = "🛠 Interface Preferences"
-        $RTitle.Font = $FontTitle
-        $RTitle.ForeColor = $tm.text
-        $RTitle.Location = New-Object System.Drawing.Point(20, 20)
-        $RTitle.Size = New-Object System.Drawing.Size(300, 30)
-        $RightPanel.Controls.Add($RTitle)
-
-        $LY = 70; $RY = 70
-        
-        $splitThreshold = [Math]::Ceiling($currentSubs.Count / 2)
-        
-        for ($i=0; $i -lt $currentSubs.Count; $i++) {
-            $subText = $currentSubs[$i]
-            $B = New-Object System.Windows.Forms.Button
-            
-            if ($subText -eq "Optimize Performance") {
-                if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
-                else { $B.Text = "  Optimize Performance (Enable)" }
-            } else {
-                $B.Text = "  $subText"
-            }
-            
-            $B.Font = $FontBtn
-            $B.Size = New-Object System.Drawing.Size(585, 40)
-            $B.FlatStyle = "Flat"
-            $B.TextAlign = "MiddleLeft"
-            $B.BackColor = $tm.bg
-            $B.ForeColor = $tm.text
-            $B.FlatAppearance.BorderColor = $tm.accent
-            
-            $B.Add_Click({ 
-                $cmdLabel = $this.Text.Trim()
-                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
-                    Resolve-Command "Optimize Performance"
-                } else {
-                    Resolve-Command $cmdLabel
-                }
-            })
-
-            if ($i -lt $splitThreshold) {
-                $B.Location = New-Object System.Drawing.Point(20, $LY)
-                $LeftPanel.Controls.Add($B)
-                $LY += 50
-            } else {
-                $B.Location = New-Object System.Drawing.Point(20, $RY)
-                $RightPanel.Controls.Add($B)
-                $RY += 50
-            }
-        }
-    }
-}
-
-function Render-Navigation {
-    $TabContainer.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-
-    foreach ($category in $CONFIG.Keys) {
-        $isActive = ($category -eq $Global:CurrentCategory)
-        $B = New-Object System.Windows.Forms.Button
-        $B.Text = $category
-        $B.Size = New-Object System.Drawing.Size(150, 42)
-        $B.Font = $FontTab
-        $B.FlatStyle = "Flat"
-        $B.FlatAppearance.BorderSize = 0
+    $CommitBtn.Location = New-Object System.
