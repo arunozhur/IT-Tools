@@ -269,15 +269,16 @@ function Run-Cmd($command, $title) {
 
     $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
 
-    # Instantiate File Logging Stream Matrix instead of direct standard handles
+    # Reset logging target
     $Global:LogReaderIndex = 0
     if (Test-Path $Global:TempLogPath) { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue }
     "Initial Session Bind Validation Sequence Operational." | Out-File $Global:TempLogPath -Encoding utf8
 
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "cmd.exe"
-    # Pipe output and errors directly to the temporary text file pool safely
-    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command`" > `"$Global:TempLogPath`" 2>&1"
+    
+    # FIX: Using Tee-Object forcing immediate flush of stream buffer into the temp file line-by-line
+    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command 2>&1 | Tee-Object -FilePath '$Global:TempLogPath' -Append`""
     $Psi.UseShellExecute = $false
     $Psi.CreateNoWindow = $true
 
@@ -292,7 +293,7 @@ function Run-Cmd($command, $title) {
     }
 
     $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
-    $Global:ActiveTimer.Interval = 150
+    $Global:ActiveTimer.Interval = 200 # Balanced refresh interval
     $Global:ActiveTimer.Add_Tick({
         if ($null -eq $OutBox -or $OutBox.IsDisposed) {
             Reset-BackgroundPipeline
@@ -301,7 +302,7 @@ function Run-Cmd($command, $title) {
 
         try {
             if (Test-Path $Global:TempLogPath) {
-                # Read completely independent lines without risking handle blockages
+                # Read contents safely using dynamic line-indexing
                 $Lines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
                 if ($null -ne $Lines -and $Lines.Count -gt $Global:LogReaderIndex) {
                     for ($i = $Global:LogReaderIndex; $i -lt $Lines.Count; $i++) {
@@ -512,206 +513,3 @@ function Show-NetworkUI {
     $Entry.Location = New-Object System.Drawing.Point(20, 240)
     $Entry.Font = $FontBtn
     $Panel.Controls.Add($Entry)
-
-    $BtnFrame = New-Object System.Windows.Forms.FlowLayoutPanel
-    $BtnFrame.Location = New-Object System.Drawing.Point(20, 300)
-    $BtnFrame.Size = New-Object System.Drawing.Size(800, 60)
-    $Panel.Controls.Add($BtnFrame)
-
-    $Actions = @("Disable", "Enable", "Restart")
-    foreach ($act in $Actions) {
-        $B = New-Object System.Windows.Forms.Button
-        $B.Text = if ($act -eq "Restart") { "Power-Cycle Interfacer" } else { "$act Path" }
-        $B.Font = $FontBtn
-        $B.Size = New-Object System.Drawing.Size(220, 40)
-        $B.FlatStyle = "Flat"
-        $B.FlatAppearance.BorderSize = 0
-        $B.ForeColor = [System.Drawing.Color]::White
-        
-        if ($act -eq "Disable") { $B.BackColor = [System.Drawing.Color]::FromArgb(239,68,68) }
-        elseif ($act -eq "Enable") { $B.BackColor = [System.Drawing.Color]::FromArgb(16,185,129) }
-        else { $B.BackColor = $tm.accent }
-
-        $B.Add_Click({
-            $n = $Entry.Text.Trim()
-            if (-not $n) { return }
-            Update-Status "Sending active instructions to adapter pipeline node: $n"
-            if ($act -eq "Disable") { Disable-NetAdapter -Name $n -Confirm:$false }
-            elseif ($act -eq "Enable") { Enable-NetAdapter -Name $n -Confirm:$false }
-            else { Restart-NetAdapter -Name $n -Confirm:$false }
-            Update-Status "Successfully processed net interface target operation: $n"
-            Render-Workspace
-        })
-        $BtnFrame.Controls.Add($B)
-    }
-}
-
-# --- CORE RENDER ENGINES ---
-function Render-Workspace {
-    $ContentWorkspace.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-    $currentSubs = $CONFIG[$Global:CurrentCategory]
-
-    if ($Global:CurrentCategory -eq "Config") {
-        $Wrapper = New-Object System.Windows.Forms.Panel
-        $Wrapper.Dock = "Fill"
-        $Wrapper.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($Wrapper)
-
-        $TitleLbl = New-Object System.Windows.Forms.Label
-        $TitleLbl.Text = "Legacy System Administration Panels"
-        $TitleLbl.Font = $FontTitle
-        $TitleLbl.ForeColor = $tm.text
-        $TitleLbl.Location = New-Object System.Drawing.Point(20, 20)
-        $TitleLbl.Size = New-Object System.Drawing.Size(500, 30)
-        $Wrapper.Controls.Add($TitleLbl)
-
-        $Y = 70
-        foreach ($subText in $currentSubs) {
-            $B = New-Object System.Windows.Forms.Button
-            $B.Text = "  $subText"
-            $B.Font = $FontBtn
-            $B.Size = New-Object System.Drawing.Size(1235, 38)
-            $B.Location = New-Object System.Drawing.Point(20, $Y)
-            $B.FlatStyle = "Flat"
-            $B.TextAlign = "MiddleLeft"
-            $B.BackColor = $tm.bg
-            $B.ForeColor = $tm.text
-            $B.FlatAppearance.BorderColor = $tm.accent
-            
-            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
-            $Wrapper.Controls.Add($B)
-            $Y += 44
-        }
-    } else {
-        $LeftPanel = New-Object System.Windows.Forms.Panel
-        $LeftPanel.Size = New-Object System.Drawing.Size(625, 520)
-        $LeftPanel.Location = New-Object System.Drawing.Point(0, 0)
-        $LeftPanel.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($LeftPanel)
-
-        $RightPanel = New-Object System.Windows.Forms.Panel
-        $RightPanel.Size = New-Object System.Drawing.Size(625, 520)
-        $RightPanel.Location = New-Object System.Drawing.Point(650, 0)
-        $RightPanel.BackColor = $tm.card
-        $ContentWorkspace.Controls.Add($RightPanel)
-
-        $LTitle = New-Object System.Windows.Forms.Label
-        $LTitle.Text = "⚡ Action Sequences"
-        $LTitle.Font = $FontTitle
-        $LTitle.ForeColor = $tm.text
-        $LTitle.Location = New-Object System.Drawing.Point(20, 20)
-        $LTitle.Size = New-Object System.Drawing.Size(300, 30)
-        $LeftPanel.Controls.Add($LTitle)
-
-        $RTitle = New-Object System.Windows.Forms.Label
-        $RTitle.Text = "🛠 Interface Preferences"
-        $RTitle.Font = $FontTitle
-        $RTitle.ForeColor = $tm.text
-        $RTitle.Location = New-Object System.Drawing.Point(20, 20)
-        $RTitle.Size = New-Object System.Drawing.Size(300, 30)
-        $RightPanel.Controls.Add($RTitle)
-
-        $LY = 70; $RY = 70
-        $splitThreshold = [Math]::Ceiling($currentSubs.Count / 2)
-        
-        for ($i=0; $i -lt $currentSubs.Count; $i++) {
-            $subText = $currentSubs[$i]
-            $B = New-Object System.Windows.Forms.Button
-            if ($subText -eq "Optimize Performance") {
-                if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
-                else { $B.Text = "  Optimize Performance (Enable)" }
-            } else {
-                $B.Text = "  $subText"
-            }
-            $B.Font = $FontBtn
-            $B.Size = New-Object System.Drawing.Size(585, 40)
-            $B.FlatStyle = "Flat"
-            $B.TextAlign = "MiddleLeft"
-            $B.BackColor = $tm.bg
-            $B.ForeColor = $tm.text
-            $B.FlatAppearance.BorderColor = $tm.accent
-            
-            $B.Add_Click({ 
-                $cmdLabel = $this.Text.Trim()
-                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
-                    Resolve-Command "Optimize Performance"
-                } else {
-                    Resolve-Command $cmdLabel
-                }
-            })
-
-            if ($i -lt $splitThreshold) {
-                $B.Location = New-Object System.Drawing.Point(20, $LY)
-                $LeftPanel.Controls.Add($B)
-                $LY += 50
-            } else {
-                $B.Location = New-Object System.Drawing.Point(20, $RY)
-                $RightPanel.Controls.Add($B)
-                $RY += 50
-            }
-        }
-    }
-}
-
-function Render-Navigation {
-    if ($null -eq $TabContainer -or $TabContainer.IsDisposed) { return }
-    $TabContainer.Controls.Clear()
-    $tm = $THEMES[$Global:ActiveTheme]
-
-    foreach ($category in $CONFIG.Keys) {
-        $isActive = ($category -eq $Global:CurrentCategory)
-        $B = New-Object System.Windows.Forms.Button
-        $B.Text = $category
-        $B.Size = New-Object System.Drawing.Size(150, 42)
-        $B.Font = $FontTab
-        $B.FlatStyle = "Flat"
-        $B.FlatAppearance.BorderSize = 0
-        
-        if ($isActive) {
-            $B.BackColor = $tm.accent
-            $B.ForeColor = [System.Drawing.Color]::White
-        } else {
-            $B.BackColor = [System.Drawing.Color]::Transparent
-            $B.ForeColor = $tm.text
-        }
-
-        $B.Add_Click({
-            Reset-BackgroundPipeline
-            $Global:CurrentCategory = $this.Text
-            Apply-ThemeEngine
-            Update-Status "Switched view workspace focus context target to: $($this.Text)"
-        })
-        $TabContainer.Controls.Add($B)
-    }
-}
-
-function Apply-ThemeEngine {
-    $tm = $THEMES[$Global:ActiveTheme]
-    if ($null -ne $Form -and -not $Form.IsDisposed) { $Form.BackColor = $tm.bg }
-    if ($null -ne $TopHeader -and -not $TopHeader.IsDisposed) { $TopHeader.BackColor = $tm.card }
-    if ($null -ne $NotificationBar -and -not $NotificationBar.IsDisposed) { $NotificationBar.BackColor = [System.Drawing.Color]::FromArgb(15,23,42) }
-    
-    Render-Navigation
-    Render-Workspace
-}
-
-# --- THEME DROPDOWN SETUP ---
-$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
-$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
-$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
-$ThemeDropdown.Font = $FontBtn
-$ThemeDropdown.DropDownStyle = "DropDownList"
-foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
-$ThemeDropdown.SelectedItem = $Global:ActiveTheme
-$ThemeDropdown.Add_SelectedIndexChanged({
-    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
-    Apply-ThemeEngine
-    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
-})
-$TopHeader.Controls.Add($ThemeDropdown)
-
-# --- EXECUTION INITIALIZATION ---
-Apply-ThemeEngine
-Log "Advanced Windows Optimization Core Engine Environment Initialized."
-[System.Windows.Forms.Application]::Run($Form)
