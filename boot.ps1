@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE MATRIX)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -143,44 +143,46 @@ function Toggle-Performance {
 # --- COMMAND DISPATCHER ---
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
-    switch -regex ($txt) {
-        "computer management" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
-        "control panel"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
-        "network connections" { Start-Process "ncpa.cpl"; Update-Status "Deployed Network Connections" }
-        "power panel"         { Start-Process "control" "powercfg.cpl"; Update-Status "Deployed Power Panel" }
-        "printer panel"       { Start-Process "control" "printers"; Update-Status "Deployed Printer Panel" }
-        "region"              { Start-Process "intl.cpl"; Update-Status "Deployed Region Panel" }
-        "sound settings"      { Start-Process "mmsys.cpl"; Update-Status "Deployed Sound Settings" }
-        "system properties"   { Start-Process "sysdm.cpl"; Update-Status "Deployed System Properties" }
-        "time and date"       { Start-Process "timedate.cpl"; Update-Status "Deployed Time & Date Panel" }
-        "restart spooler"     { Trigger-Spooler }
-        "force screen timeout" { Show-TimeoutUI }
-        "system corruption scan" { Run-Cmd "sfc /scannow" "SFC System Integrity Target" }
-        "clear temp files"    { Run-Cmd "cmd.exe /c del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
-        "optimize performance" { Toggle-Performance }
-        "enable long paths"   { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Win32 Naming Path Extension Limit Lifted" }
-        "disable sticky keys" { Run-Cmd 'reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f' "Sticky Keys System Interrupter Disabled" }
-        "create restore point"{ Run-Cmd "powershell -Command Checkpoint-Computer -Description 'AdminToolRestore' -RestorePointType 'MODIFY_SETTINGS'" "System Restore Snapshot Validation" }
-        "network adaptor"     { Show-NetworkUI }
-        "ip config overview"  { Run-Cmd "ipconfig /all" "IP Protocol Configuration Matrix" }
-        "ping diagnostic"     { Run-Cmd "ping 8.8.8.8 -t" "ICMP Destination Core Ping Stream" }
-        "gp update force"     { Run-Cmd "gpupdate /force" "Group Policy Policy Refresh Optimization" }
-        "network reset sequence" { Run-Cmd "cmd.exe /c netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
-        "flush dns cache"     { Run-Cmd "ipconfig /flushdns" "DNS Resolver Local Cache Purge" }
-        "view active connections" { Run-Cmd "netstat -an" "Active Inter-Network Route Monitor Output" }
-        "firewall status check" { Run-Cmd "netsh advfirewall show allprofiles" "Windows Defender Security Firewall Verification" }
-        "ntp server sync"     { Run-Cmd "w32tm /resync" "System Hardware Time NTP Synchronization Sequence" }
-        "openssh server enable"{ Run-Cmd "powershell -Command Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0" "Deploy and Bind Local Secure Shell Architecture" }
-        "windows update reset" { Run-Cmd "cmd.exe /c net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
-        "winget reinstall"    { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Package Manager Deployment Restoration" }
-        "rebuild icon cache"  { Run-Cmd "cmd.exe /c ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
-        "reset windows store" { Run-Cmd "wsreset.exe" "Microsoft Store Architecture Cache Clearing Matrix" }
-        "repair component store" { Run-Cmd "DISM /Online /Cleanup-Image /RestoreHealth" "Deployment Image Servicing Engine Optimization Sync" }
-        "chkdsk scan"         { Run-Cmd "chkdsk C: /f /r /x" "NTFS File Allocation Index Sector Validation Task" }
-        "fix package manager" { Run-Cmd "dism /online /cleanup-image /startcomponentcleanup" "WinSxS Side-by-Side Component Library Optimization" }
-        "restart explorer"    { Run-Cmd "cmd.exe /c taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
-        "clear dns resolver"  { Run-Cmd "ipconfig /registerdns" "Network Registration Handle Updates Initiated" }
-        "reset winsock"       { Run-Cmd "netsh winsock reset catalog" "Winsock API Layer Catalog Protocol Reset Pipeline" }
+    
+    # Safe Wildcard Matching Matrix to support all labels cleanly
+    switch -wildcard ($txt) {
+        "*computer management*" { Start-Process "compmgmt.msc"; Update-Status "Deployed Computer Management Panel" }
+        "*control panel*"       { Start-Process "control"; Update-Status "Deployed Control Panel" }
+        "*network connections*" { Start-Process "ncpa.cpl"; Update-Status "Deployed Network Connections" }
+        "*power panel*"         { Start-Process "control" "powercfg.cpl"; Update-Status "Deployed Power Panel" }
+        "*printer panel*"       { Start-Process "control" "printers"; Update-Status "Deployed Printer Panel" }
+        "*region*"              { Start-Process "intl.cpl"; Update-Status "Deployed Region Panel" }
+        "*sound settings*"      { Start-Process "mmsys.cpl"; Update-Status "Deployed Sound Settings" }
+        "*system properties*"   { Start-Process "sysdm.cpl"; Update-Status "Deployed System Properties" }
+        "*time and date*"       { Start-Process "timedate.cpl"; Update-Status "Deployed Time & Date Panel" }
+        "*spooler*"             { Trigger-Spooler }
+        "*timeout*"             { Show-TimeoutUI }
+        "*corruption scan*"     { Run-Cmd "sfc /scannow" "SFC System Integrity Target" }
+        "*clear temp files*"    { Run-Cmd "cmd.exe /c del /q/f/s %TEMP%\* && cleanmgr /sagerun:1" "Temporary System Cache Purge" }
+        "*performance*"         { Toggle-Performance }
+        "*long paths*"          { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Win32 Naming Path Extension Limit Lifted" }
+        "*sticky keys*"         { Run-Cmd 'reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f' "Sticky Keys System Interrupter Disabled" }
+        "*restore point*"       { Run-Cmd "powershell -Command Checkpoint-Computer -Description 'AdminToolRestore' -RestorePointType 'MODIFY_SETTINGS'" "System Restore Snapshot Validation" }
+        "*network adaptor*"     { Show-NetworkUI }
+        "*ip config*"           { Run-Cmd "ipconfig /all" "IP Protocol Configuration Matrix" }
+        "*ping diagnostic*"     { Run-Cmd "ping 8.8.8.8" "ICMP Destination Core Ping Stream" }
+        "*gp update*"           { Run-Cmd "gpupdate /force" "Group Policy Policy Refresh Optimization" }
+        "*network reset*"       { Run-Cmd "cmd.exe /c netsh int ip reset && netsh winsock reset" "Network Interface Stack Clear Sequence" }
+        "*flush dns*"           { Run-Cmd "ipconfig /flushdns" "DNS Resolver Local Cache Purge" }
+        "*active connections*"  { Run-Cmd "netstat -an" "Active Inter-Network Route Monitor Output" }
+        "*firewall status*"     { Run-Cmd "netsh advfirewall show allprofiles" "Windows Defender Security Firewall Verification" }
+        "*ntp server*"          { Run-Cmd "w32tm /resync" "System Hardware Time NTP Synchronization Sequence" }
+        "*openssh server*"      { Run-Cmd "powershell -Command Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0" "Deploy and Bind Local Secure Shell Architecture" }
+        "*windows update reset*" { Run-Cmd "cmd.exe /c net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Windows Update Subsystem Stack Reset" }
+        "*winget reinstall*"    { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Package Manager Deployment Restoration" }
+        "*rebuild icon cache*"  { Run-Cmd "cmd.exe /c ie4uinit.exe -show && taskkill /IM explorer.exe /F && del /f /q %localappdata%\IconCache.db && start explorer.exe" "Shell Graphical Environment Refresher Sequence" }
+        "*windows store*"       { Run-Cmd "wsreset.exe" "Microsoft Store Architecture Cache Clearing Matrix" }
+        "*component store*"     { Run-Cmd "DISM /Online /Cleanup-Image /RestoreHealth" "Deployment Image Servicing Engine Optimization Sync" }
+        "*chkdsk scan*"         { Run-Cmd "chkdsk C: /f /r /x" "NTFS File Allocation Index Sector Validation Task" }
+        "*package manager*"     { Run-Cmd "dism /online /cleanup-image /startcomponentcleanup" "WinSxS Side-by-Side Component Library Optimization" }
+        "*restart explorer*"    { Run-Cmd "cmd.exe /c taskkill /f /im explorer.exe && start explorer.exe" "Windows Shell Execution Infrastructure Recycling Task" }
+        "*dns resolver*"        { Run-Cmd "ipconfig /registerdns" "Network Registration Handle Updates Initiated" }
+        "*winsock*"             { Run-Cmd "netsh winsock reset catalog" "Winsock API Layer Catalog Protocol Reset Pipeline" }
         default                 { Update-Status "Command triggered: $label" }
     }
 }
@@ -470,16 +472,9 @@ function Render-Workspace {
             $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
             $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
             
-            $B.Add_Click({ 
-                $cmdLabel = $this.Text.Trim()
-                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
-                    Resolve-Command "Optimize Performance"
-                } else {
-                    Resolve-Command $cmdLabel
-                }
-            })
+            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
 
-            if ($i -lt 4) {
+            if ($i -lt 5) {
                 $B.Location = New-Object System.Drawing.Point(20, $LY)
                 $LeftPanel.Controls.Add($B)
                 $LY += 50
