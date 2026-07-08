@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (FINAL STABLE)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - PURE POWERSHELL GUI (STABLE FIXED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -67,7 +67,6 @@ function Reset-BackgroundPipeline {
         try { $Global:ActiveProcess.Dispose() } catch {}
         $Global:ActiveProcess = $null
     }
-    # Safely clear temp file session
     if (Test-Path $Global:TempLogPath) {
         try { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue } catch {}
     }
@@ -94,7 +93,6 @@ $TopHeader.Height = 70
 $TopHeader.Dock = "Top"
 $Form.Controls.Add($TopHeader)
 
-# --- TAB CONTAINER ---
 $TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel
 $TabContainer.Location = New-Object System.Drawing.Point(25, 12)
 $TabContainer.Size = New-Object System.Drawing.Size(800, 50)
@@ -113,7 +111,6 @@ $BottomStickyFrame.Location = New-Object System.Drawing.Point(30, 635)
 $BottomStickyFrame.Size = New-Object System.Drawing.Size(1275, 210)
 $Form.Controls.Add($BottomStickyFrame)
 
-# --- NOTIFICATION BAR ---
 $NotificationBar = New-Object System.Windows.Forms.Panel
 $NotificationBar.Height = 40
 $NotificationBar.Dock = "Top"
@@ -127,7 +124,6 @@ $NotificationText.Dock = "Fill"
 $NotificationText.TextAlign = "MiddleLeft"
 $NotificationBar.Controls.Add($NotificationText)
 
-# --- CONSOLE BLOCK ---
 $ConsoleBox = New-Object System.Windows.Forms.TextBox
 $ConsoleBox.Multiline = $true
 $ConsoleBox.ScrollBars = "Vertical"
@@ -151,17 +147,12 @@ function Log($msg) {
 function Update-Status($msg, $isError=$false) {
     if ($null -ne $NotificationText -and -not $NotificationText.IsDisposed) {
         $prefix = if ($isError) { "⚠ Error: " } else { "✓ Active: " }
-        if ($isError) {
-            $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(248,113,113)
-        } else {
-            $NotificationText.ForeColor = [System.Drawing.Color]::FromArgb(52,211,153)
-        }
+        $NotificationText.ForeColor = if ($isError) { [System.Drawing.Color]::FromArgb(248,113,113) } else { [System.Drawing.Color]::FromArgb(52,211,153) }
         $NotificationText.Text = "$prefix$msg"
     }
     Log $msg
 }
 
-# --- PERFORMANCE TOGGLE LOGIC ---
 function Toggle-Performance {
     if ($Global:OptimizeState) {
         Resolve-Command "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e"
@@ -269,15 +260,12 @@ function Run-Cmd($command, $title) {
 
     $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
 
-    # Reset logging target
     $Global:LogReaderIndex = 0
     if (Test-Path $Global:TempLogPath) { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue }
     "Initial Session Bind Validation Sequence Operational." | Out-File $Global:TempLogPath -Encoding utf8
 
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "cmd.exe"
-    
-    # FIX: Using Tee-Object forcing immediate flush of stream buffer into the temp file line-by-line
     $Psi.Arguments = "/c powershell -NoProfile -Command `"$command 2>&1 | Tee-Object -FilePath '$Global:TempLogPath' -Append`""
     $Psi.UseShellExecute = $false
     $Psi.CreateNoWindow = $true
@@ -293,22 +281,18 @@ function Run-Cmd($command, $title) {
     }
 
     $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
-    $Global:ActiveTimer.Interval = 200 # Balanced refresh interval
+    $Global:ActiveTimer.Interval = 200
     $Global:ActiveTimer.Add_Tick({
         if ($null -eq $OutBox -or $OutBox.IsDisposed) {
             Reset-BackgroundPipeline
             return
         }
-
         try {
             if (Test-Path $Global:TempLogPath) {
-                # Read contents safely using dynamic line-indexing
                 $Lines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
                 if ($null -ne $Lines -and $Lines.Count -gt $Global:LogReaderIndex) {
                     for ($i = $Global:LogReaderIndex; $i -lt $Lines.Count; $i++) {
-                        if ($null -ne $Lines[$i]) {
-                            $OutBox.AppendText($Lines[$i] + "`r`n")
-                        }
+                        if ($null -ne $Lines[$i]) { $OutBox.AppendText($Lines[$i] + "`r`n") }
                     }
                     $Global:LogReaderIndex = $Lines.Count
                     $OutBox.SelectionStart = $OutBox.Text.Length
@@ -323,9 +307,7 @@ function Run-Cmd($command, $title) {
                 if (Test-Path $Global:TempLogPath) {
                     $FinalLines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
                     if ($null -ne $FinalLines -and $FinalLines.Count -gt $Global:LogReaderIndex) {
-                        for ($i = $Global:LogReaderIndex; $i -lt $FinalLines.Count; $i++) {
-                            $OutBox.AppendText($FinalLines[$i] + "`r`n")
-                        }
+                        for ($i = $Global:LogReaderIndex; $i -lt $FinalLines.Count; $i++) { $OutBox.AppendText($FinalLines[$i] + "`r`n") }
                     }
                 }
             } catch {}
@@ -622,9 +604,7 @@ function Render-Workspace {
             if ($subText -eq "Optimize Performance") {
                 if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
                 else { $B.Text = "  Optimize Performance (Enable)" }
-            } else {
-                $B.Text = "  $subText"
-            }
+            } else { $B.Text = "  $subText" }
             $B.Font = $FontBtn
             $B.Size = New-Object System.Drawing.Size(585, 40)
             $B.FlatStyle = "Flat"
@@ -635,11 +615,7 @@ function Render-Workspace {
             
             $B.Add_Click({ 
                 $cmdLabel = $this.Text.Trim()
-                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
-                    Resolve-Command "Optimize Performance"
-                } else {
-                    Resolve-Command $cmdLabel
-                }
+                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") { Resolve-Command "Optimize Performance" } else { Resolve-Command $cmdLabel }
             })
 
             if ($i -lt $splitThreshold) {
