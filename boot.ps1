@@ -1,11 +1,11 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.7 (REFINED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V2.8 (DYNAMIC CONTROLS)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# --- CONFIGURATION MATRIX (Sticky Keys removed) ---
+# --- CONFIGURATION MATRIX ---
 $CONFIG = @{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
@@ -26,7 +26,33 @@ $TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $Top
 $TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
 $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
 
-# --- FUNCTIONS ---
+# --- COMMAND EXECUTION ---
+function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
+
+function Resolve-Command($label) {
+    $txt = $label.Trim().ToLower()
+    switch ($txt) {
+        # Tweaks with dynamic logic
+        "force screen timeout" {
+            $minutes = [Microsoft.VisualBasic.Interaction]::InputBox("Enter timeout duration (in minutes):", "Screen Timeout", "60")
+            if ($minutes -ne "") { Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $($minutes * 60) && powercfg /setactive scheme_current" "Screen Timeout Set to $minutes mins" }
+        }
+        "optimize performance" {
+            $choice = [System.Windows.Forms.MessageBox]::Show("Click Yes to Enable High Performance, No to return to Balanced.", "Optimize Performance", [System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+            if ($choice -eq "Yes") { Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "High Performance Enabled" }
+            elseif ($choice -eq "No") { Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Balanced Mode Restored" }
+        }
+        
+        # Other Commands (Kept the same)
+        "system hardware report" { Get-SystemHardwareInfo }
+        "computer management"    { Start-Process "compmgmt.msc" }
+        "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
+        "clear temp files"       { Run-Cmd "del /q /f /s %temp%\* && del /q /f /s C:\Windows\Temp\*" "Temp Files Purge" }
+        default { Run-Cmd $txt $txt }
+    }
+}
+
+# --- GUI RENDERERS ---
 function Get-SystemHardwareInfo {
     $ContentWorkspace.Controls.Clear()
     $BIOS = Get-CimInstance Win32_BIOS; $CPU = Get-CimInstance Win32_Processor; $RAM = Get-CimInstance Win32_PhysicalMemory; $Slots = Get-CimInstance Win32_PhysicalMemoryArray; $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
@@ -35,40 +61,6 @@ function Get-SystemHardwareInfo {
     $Report = "--- SYSTEM HARDWARE REPORT ---`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RAMType`r`nSlots Total    : $($Slots.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $DType`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
     $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
     $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
-}
-
-function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
-
-function Resolve-Command($label) {
-    $txt = $label.Trim().ToLower()
-    switch ($txt) {
-        # Config
-        "system hardware report" { Get-SystemHardwareInfo }
-        "computer management"    { Start-Process "compmgmt.msc" }
-        "control panel"          { Start-Process "control" }
-        "network connections"    { Start-Process "ncpa.cpl" }
-        "power panel"            { Start-Process "control" "powercfg.cpl" }
-        "printer panel"          { Start-Process "control" "printers" }
-        "region"                 { Start-Process "intl.cpl" }
-        "sound settings"         { Start-Process "mmsys.cpl" }
-        "system properties"      { Start-Process "sysdm.cpl" }
-        "time and date"          { Start-Process "timedate.cpl" }
-        
-        # Tweaks (FIXED)
-        "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
-        "force screen timeout"   { Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle 60 && powercfg /setactive scheme_current" "Screen Timeout Set to 60s" }
-        "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
-        "clear temp files"       { Run-Cmd "del /q /f /s %temp%\* && del /q /f /s C:\Windows\Temp\*" "Temp Files Purge" }
-        "optimize performance"   { Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "High Performance Mode Set" }
-        "enable long paths"      { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Long Paths Enabled" }
-        
-        # Fixes
-        "windows update reset"   { Run-Cmd "net stop wuauserv && net stop bits && net start wuauserv && net start bits" "Update Reset" }
-        "winget reinstall"       { Run-Cmd "powershell -Command Get-AppxPackage -AllUsers *Microsoft.DesktopAppInstaller* | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register `'$($_.InstallLocation)\AppXManifest.xml`';}" "WinGet Restore" }
-        "reset winsock"          { Run-Cmd "netsh winsock reset" "Winsock Reset" }
-        
-        default { Run-Cmd $txt $txt }
-    }
 }
 
 function Render-Workspace {
