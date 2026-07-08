@@ -1,12 +1,11 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V3.3 (ENHANCED HARDWARE REPORT)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V3.4 (STABLE & FINAL)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
 
-# --- CONFIGURATION MATRIX ---
 $CONFIG = @{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
@@ -14,8 +13,9 @@ $CONFIG = @{
     "Fixes & Updates" = @("Chkdsk Scan", "Restart Explorer", "Clear DNS Resolver", "Reset Winsock")
 }
 
+# LANDING TAB SET TO CONFIG
 $Global:ActiveTheme = "Forest Sage"
-$Global:CurrentCategory = "Tweaks"
+$Global:CurrentCategory = "Config" 
 
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Advanced Windows Optimization Engine"
@@ -29,7 +29,6 @@ $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Loc
 
 function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
 
-# --- IMPROVED HARDWARE REPORT ---
 function Get-SystemHardwareInfo {
     $ContentWorkspace.Controls.Clear()
     $OS = Get-CimInstance Win32_OperatingSystem
@@ -39,11 +38,13 @@ function Get-SystemHardwareInfo {
     $Array = Get-CimInstance Win32_PhysicalMemoryArray
     $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
     
-    # RAM Type Logic
     $SMBIOS = $RAM[0].SMBIOSMemoryType
-    $RType = switch($SMBIOS) { 26 {"DDR4"} 34 {"DDR5"} 24 {"DDR3"} default {"Unknown/Other ($SMBIOS)"} }
+    $RType = if ($SMBIOS -eq 26) {"DDR4"} elseif ($SMBIOS -eq 34) {"DDR5"} elseif ($SMBIOS -eq 24) {"DDR3"} else {"Unknown"}
     
-    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RType`r`nSlots Total    : $($Array.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`nSlots Available: $($Array.MemoryDevices - $RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $($Disk.MediaType -eq 4 ? 'SSD / NVMe' : 'HDD')`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
+    $SType = "HDD"
+    if ($Disk.MediaType -eq 4) { $SType = "SSD / NVMe" }
+    
+    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RType`r`nSlots Total    : $($Array.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`nSlots Available: $($Array.MemoryDevices - $RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $SType`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
     
     $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
     $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
