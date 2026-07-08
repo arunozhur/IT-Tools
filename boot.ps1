@@ -50,6 +50,8 @@ $Global:OptimizeState = $false
 # --- BACKGROUND TASK SAFETY HANDLES ---
 $Global:ActiveProcess = $null
 $Global:ActiveTimer = $null
+$Global:LogReaderIndex = 0
+$Global:TempLogPath = "$env:TEMP\engine_terminal_stream.log"
 
 function Reset-BackgroundPipeline {
     if ($null -ne $Global:ActiveTimer) {
@@ -65,6 +67,11 @@ function Reset-BackgroundPipeline {
         try { $Global:ActiveProcess.Dispose() } catch {}
         $Global:ActiveProcess = $null
     }
+    # Safely clear temp file session
+    if (Test-Path $Global:TempLogPath) {
+        try { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    $Global:LogReaderIndex = 0
 }
 
 # --- MAIN WINDOW INTERFACE ---
@@ -262,11 +269,15 @@ function Run-Cmd($command, $title) {
 
     $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
 
+    # Instantiate File Logging Stream Matrix instead of direct standard handles
+    $Global:LogReaderIndex = 0
+    if (Test-Path $Global:TempLogPath) { Remove-Item $Global:TempLogPath -Force -ErrorAction SilentlyContinue }
+    "Initial Session Bind Validation Sequence Operational." | Out-File $Global:TempLogPath -Encoding utf8
+
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "cmd.exe"
-    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command`""
-    $Psi.RedirectStandardOutput = $true
-    $Psi.RedirectStandardError = $true
+    # Pipe output and errors directly to the temporary text file pool safely
+    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command`" > `"$Global:TempLogPath`" 2>&1"
     $Psi.UseShellExecute = $false
     $Psi.CreateNoWindow = $true
 
@@ -281,49 +292,44 @@ function Run-Cmd($command, $title) {
     }
 
     $Global:ActiveTimer = New-Object System.Windows.Forms.Timer
-    $Global:ActiveTimer.Interval = 100
+    $Global:ActiveTimer.Interval = 150
     $Global:ActiveTimer.Add_Tick({
-        # --- ROBUST SAFETY INTEGRITY MATRIX ---
-        if ($null -eq $Global:ActiveProcess -or $null -eq $OutBox -or $OutBox.IsDisposed) {
+        if ($null -eq $OutBox -or $OutBox.IsDisposed) {
             Reset-BackgroundPipeline
             return
         }
 
         try {
-            # Stream reader allocation check
-            if ($null -ne $Global:ActiveProcess.StandardOutput -and -not $Global:ActiveProcess.StandardOutput.EndOfStream) {
-                while (-not $Global:ActiveProcess.StandardOutput.EndOfStream) {
-                    if ($OutBox.IsDisposed) { Reset-BackgroundPipeline; return }
-                    $Line = $Global:ActiveProcess.StandardOutput.ReadLine()
-                    if ($null -ne $Line) {
-                        $OutBox.AppendText("$Line`r`n")
+            if (Test-Path $Global:TempLogPath) {
+                # Read completely independent lines without risking handle blockages
+                $Lines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
+                if ($null -ne $Lines -and $Lines.Count -gt $Global:LogReaderIndex) {
+                    for ($i = $Global:LogReaderIndex; $i -lt $Lines.Count; $i++) {
+                        if ($null -ne $Lines[$i]) {
+                            $OutBox.AppendText($Lines[$i] + "`r`n")
+                        }
                     }
-                    [System.Windows.Forms.Application]::DoEvents()
-                    if ($null -eq $Global:ActiveProcess -or $Global:ActiveProcess.StandardOutput.EndOfStream) { break }
-                }
-            }
-
-            if ($null -ne $Global:ActiveProcess -and $null -ne $Global:ActiveProcess.StandardError -and -not $Global:ActiveProcess.StandardError.EndOfStream) {
-                if (-not $OutBox.IsDisposed) {
-                    $ErrLine = $Global:ActiveProcess.StandardError.ReadLine()
-                    if ($null -ne $ErrLine) { $OutBox.AppendText("[ERROR] $ErrLine`r`n") }
-                }
-            }
-
-            if ($null -ne $Global:ActiveProcess -and $Global:ActiveProcess.HasExited) {
-                $Global:ActiveTimer.Stop()
-                if (-not $OutBox.IsDisposed) {
-                    $Remainder = $Global:ActiveProcess.StandardOutput.ReadToEnd()
-                    if ($Remainder) { $OutBox.AppendText($Remainder) }
+                    $Global:LogReaderIndex = $Lines.Count
                     $OutBox.SelectionStart = $OutBox.Text.Length
                     $OutBox.ScrollToCaret()
                 }
-                Reset-BackgroundPipeline
-                Update-Status "Completed execution sequence stack run: $title"
             }
-        } catch {
-            # Absorb transient asynchronous context pipeline errors safely
+        } catch {}
+
+        if ($null -eq $Global:ActiveProcess -or $Global:ActiveProcess.HasExited) {
+            $Global:ActiveTimer.Stop()
+            try {
+                if (Test-Path $Global:TempLogPath) {
+                    $FinalLines = Get-Content $Global:TempLogPath -ErrorAction SilentlyContinue
+                    if ($null -ne $FinalLines -and $FinalLines.Count -gt $Global:LogReaderIndex) {
+                        for ($i = $Global:LogReaderIndex; $i -lt $FinalLines.Count; $i++) {
+                            $OutBox.AppendText($FinalLines[$i] + "`r`n")
+                        }
+                    }
+                }
+            } catch {}
             Reset-BackgroundPipeline
+            Update-Status "Completed execution sequence stack run: $title"
         }
     })
     $Global:ActiveTimer.Start()
