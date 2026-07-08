@@ -46,6 +46,7 @@ $THEMES = @{
 $Global:ActiveTheme = "Forest Sage"
 $Global:CurrentCategory = "Tweaks"
 $Global:OptimizeState = $false
+$Global:OutFile = Join-Path $env:TEMP "powershell_gui_stream_output.txt"
 
 # --- MAIN ARTIFACT WINDOW ---
 $Form = New-Object System.Windows.Forms.Form
@@ -227,15 +228,14 @@ function Run-Cmd($command, $title) {
     $OutBox.ReadOnly = $true
     $TerminalPanel.Controls.Add($OutBox)
 
-    # Temporary absolute file pointer setup for reliable redirection
-    $OutFile = Join-Path $env:TEMP "powershell_gui_stream_output.txt"
-    if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
-    "Initialising Engine Interfacer Trace...`r`n" | Out-File $OutFile
+    # Clean existing file securely before deployment
+    if ($Global:OutFile -and (Test-Path $Global:OutFile)) { Remove-Item $Global:OutFile -Force -ErrorAction SilentlyContinue }
+    "Initialising Engine Interfacer Trace...`r`n" | Out-File $Global:OutFile
 
     # Initialize external safe process shell wrapper
     $Psi = New-Object System.Diagnostics.ProcessStartInfo
     $Psi.FileName = "powershell.exe"
-    $Psi.Arguments = "-NoProfile -Command `"$command | Out-String | Out-File -FilePath '$OutFile' -Encoding utf8`""
+    $Psi.Arguments = "-NoProfile -Command `"$command | Out-String | Out-File -FilePath '$Global:OutFile' -Encoding utf8`""
     $Psi.CreateNoWindow = $true
     $Psi.UseShellExecute = $false
     
@@ -243,14 +243,14 @@ function Run-Cmd($command, $title) {
     $Proc.StartInfo = $Psi
     [void]$Proc.Start()
 
-    # Form UI polling routine thread logic
+    # Form UI polling routine thread logic with validation safeguards
     $Timer = New-Object System.Windows.Forms.Timer
     $Timer.Interval = 250
     $Timer.Add_Tick({
-        if (Test-Path $OutFile) {
+        if ($Global:OutFile -and (Test-Path $Global:OutFile)) {
             try {
                 # Read using stream sharing to prevent lock constraints
-                $Stream = New-Object System.IO.FileStream($OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                $Stream = New-Object System.IO.FileStream($Global:OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                 $Reader = New-Object System.IO.StreamReader($Stream, [System.Text.Encoding]::UTF8)
                 $Txt = $Reader.ReadToEnd()
                 $Reader.Close()
@@ -267,7 +267,7 @@ function Run-Cmd($command, $title) {
         if ($Proc.HasExited) {
             $Timer.Stop()
             Update-Status "Completed execution sequence stack run: $title"
-            if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
+            if ($Global:OutFile -and (Test-Path $Global:OutFile)) { Remove-Item $Global:OutFile -Force -ErrorAction SilentlyContinue }
         }
     })
     $Timer.Start()
