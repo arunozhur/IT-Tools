@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V5.1 (STABLE)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V5.2 (STABLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -16,19 +16,11 @@ $CONFIG = @{
 
 $Global:CurrentCategory = "Config"
 
-$Form = New-Object System.Windows.Forms.Form
-$Form.Text = "Advanced Windows Optimization Engine"
-$Form.Size = New-Object System.Drawing.Size(1350, 900)
-$Form.StartPosition = "CenterScreen"
-$FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+# --- CORE FUNCTIONS ---
 
-$TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
-$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
-$ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
-
-# --- FUNCTIONS DEFINITION ---
-
-function Run-Cmd($command, $title) { Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" }
+function Run-Cmd($command, $title) { 
+    Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" 
+}
 
 function Get-SystemHardwareInfo {
     $ContentWorkspace.Controls.Clear()
@@ -65,12 +57,21 @@ function Resolve-Command($label) {
         "schedule shutdown" { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Shutdown", "3600"); if($t){Run-Cmd "shutdown /s /t $t" "Shutdown Scheduled"} }
         "schedule restart" { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Restart", "3600"); if($t){Run-Cmd "shutdown /r /t $t" "Restart Scheduled"} }
         "cancel scheduled task" { Run-Cmd "shutdown /a" "Tasks Cancelled" }
-        # (Add other buttons similarly as before)
         default { Run-Cmd $txt $txt }
     }
 }
 
-# --- GUI GENERATION ---
+# --- GUI SETUP ---
+$Form = New-Object System.Windows.Forms.Form
+$Form.Text = "Advanced Windows Optimization Engine"
+$Form.Size = New-Object System.Drawing.Size(1350, 900)
+$Form.StartPosition = "CenterScreen"
+$FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+
+$TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
+$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
+$ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
+
 foreach ($cat in $CONFIG.Keys) {
     $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(150, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
 }
