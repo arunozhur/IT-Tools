@@ -220,4 +220,434 @@ function Run-Cmd($command, $title) {
     $OutBox.Multiline = $true
     $OutBox.ScrollBars = "Vertical"
     $OutBox.Font = $FontConsole
-    $OutBox.BackColor =
+    $OutBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    $OutBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
+    $OutBox.Location = New-Object System.Drawing.Point(20, 65)
+    $OutBox.Size = New-Object System.Drawing.Size(1235, 440)
+    $OutBox.ReadOnly = $true
+    $TerminalPanel.Controls.Add($OutBox)
+
+    $OutBox.Text = "Initializing Live Terminal Architecture Pipeline...`r`n"
+
+    # Native Safe Process Definition Block
+    $Psi = New-Object System.Diagnostics.ProcessStartInfo
+    $Psi.FileName = "cmd.exe"
+    $Psi.Arguments = "/c powershell -NoProfile -Command `"$command`""
+    $Psi.RedirectStandardOutput = $true
+    $Psi.RedirectStandardError = $true
+    $Psi.UseShellExecute = $false
+    $Psi.CreateNoWindow = $true
+
+    $Proc = New-Object System.Diagnostics.Process
+    $Proc.StartInfo = $Psi
+    [void]$Proc.Start()
+
+    # Form UI Synchronization Polling Timer (Pure Main UI Thread Safe Integration)
+    $Timer = New-Object System.Windows.Forms.Timer
+    $Timer.Interval = 100
+    $Timer.Add_Tick({
+        while (-not $Proc.StandardOutput.EndOfStream) {
+            $Line = $Proc.StandardOutput.ReadLine()
+            if ($Line -ne $null) {
+                $OutBox.AppendText("$Line`r`n")
+            }
+            [System.Windows.Forms.Application]::DoEvents()
+            if ($Proc.StandardOutput.EndOfStream) { break }
+        }
+
+        if (-not $Proc.StandardError.EndOfStream) {
+            $ErrLine = $Proc.StandardError.ReadLine()
+            if ($ErrLine -ne $null) {
+                $OutBox.AppendText("[ERROR] $ErrLine`r`n")
+            }
+        }
+
+        if ($Proc.HasExited) {
+            $Timer.Stop()
+            $Remainder = $Proc.StandardOutput.ReadToEnd()
+            if ($Remainder) { $OutBox.AppendText($Remainder) }
+            $Proc.Close()
+            Update-Status "Completed execution sequence stack run: $title"
+        }
+    })
+    $Timer.Start()
+}
+
+# --- ACTION: RESTART SPOOLER ---
+function Trigger-Spooler {
+    $ContentWorkspace.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+    
+    $Wrapper = New-Object System.Windows.Forms.Panel
+    $Wrapper.Dock = "Fill"
+    $Wrapper.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $ContentWorkspace.Controls.Add($Wrapper)
+
+    $HeaderLabel = New-Object System.Windows.Forms.Label
+    $HeaderLabel.Text = "Print Spooler Infrastructure System Service"
+    $HeaderLabel.Font = $FontTitle
+    $HeaderLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $HeaderLabel.Location = New-Object System.Drawing.Point(20, 15)
+    $HeaderLabel.Size = New-Object System.Drawing.Size(600, 30)
+    $Wrapper.Controls.Add($HeaderLabel)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 15)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $Wrapper.Controls.Add($ReturnBtn)
+
+    $StatusBox = New-Object System.Windows.Forms.TextBox
+    $StatusBox.Multiline = $true
+    $StatusBox.Font = $FontConsole
+    $StatusBox.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    $StatusBox.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
+    $StatusBox.Location = New-Object System.Drawing.Point(20, 70)
+    $StatusBox.Size = New-Object System.Drawing.Size(1235, 435)
+    $StatusBox.ReadOnly = $true
+    $Wrapper.Controls.Add($StatusBox)
+
+    Update-Status "Terminating dynamic printing subsystem task allocations..."
+    $StatusBox.AppendText("[PROCESS] Halting Print Spooler service structure...`r`n")
+    Stop-Service -Name "Spooler" -Force
+    
+    $StatusBox.AppendText("[PROCESS] Purging local memory print pipeline caches...`r`n")
+    Get-ChildItem -Path "$env:systemroot\System32\Spool\Printers\*" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+    
+    $StatusBox.AppendText("[PROCESS] Re-initializing subsystem engine handles...`r`n")
+    Start-Service -Name "Spooler"
+    $StatusBox.AppendText("[SUCCESS] Dynamic service framework is now fully restored and stable.`r`n")
+    Update-Status "Print spooler subsystem engine fully restored and online."
+}
+
+# --- INTERFACE: FORCE TIMEOUT UI ---
+function Show-TimeoutUI {
+    $ContentWorkspace.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+
+    $TopPanel = New-Object System.Windows.Forms.Panel
+    $TopPanel.Height = 50
+    $TopPanel.Dock = "Top"
+    $ContentWorkspace.Controls.Add($TopPanel)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 8)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $TopPanel.Controls.Add($ReturnBtn)
+
+    $Panel = New-Object System.Windows.Forms.Panel
+    $Panel.Size = New-Object System.Drawing.Size(500, 300)
+    $Panel.Location = New-Object System.Drawing.Point(380, 100)
+    $Panel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $ContentWorkspace.Controls.Add($Panel)
+
+    $Label = New-Object System.Windows.Forms.Label
+    $Label.Text = "Lock Screen Timeout Value Strategy"
+    $Label.Font = $FontTitle
+    $Label.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label.Size = New-Object System.Drawing.Size(460, 40)
+    $Label.Location = New-Object System.Drawing.Point(20, 20)
+    $Label.TextAlign = "Center"
+    $Panel.Controls.Add($Label)
+
+    $Entry = New-Object System.Windows.Forms.TextBox
+    $Entry.Size = New-Object System.Drawing.Size(300, 35)
+    $Entry.Location = New-Object System.Drawing.Point(100, 100)
+    $Entry.Font = $FontBtn
+    $Panel.Controls.Add($Entry)
+
+    $CommitBtn = New-Object System.Windows.Forms.Button
+    $CommitBtn.Text = "Commit Threshold Metrics"
+    $CommitBtn.Font = $FontBtn
+    $CommitBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+    $CommitBtn.ForeColor = [System.Drawing.Color]::White
+    $CommitBtn.Size = New-Object System.Drawing.Size(300, 40)
+    $CommitBtn.Location = New-Object System.Drawing.Point(100, 170)
+    $CommitBtn.FlatStyle = "Flat"
+    $CommitBtn.FlatAppearance.BorderSize = 0
+    $CommitBtn.Add_Click({
+        $s = $Entry.Text.Trim()
+        if ($s -match "^\d+$") {
+            powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOCONLOCK $s
+            powercfg /SETACTIVE SCHEME_CURRENT
+            Update-Status "Synchronized lockout thresholds to $s seconds."
+            Render-Workspace
+        } else {
+            Update-Status "Invalid structural input configuration value." -isError $true
+        }
+    })
+    $Panel.Controls.Add($CommitBtn)
+}
+
+# --- INTERFACE: NETWORK MANAGEMENT UI ---
+function Show-NetworkUI {
+    $ContentWorkspace.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+
+    $Panel = New-Object System.Windows.Forms.Panel
+    $Panel.Dock = "Fill"
+    $Panel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $ContentWorkspace.Controls.Add($Panel)
+
+    $Label1 = New-Object System.Windows.Forms.Label
+    $Label1.Text = "Identified System Interface Hardware profiles:"
+    $Label1.Font = $FontTitle
+    $Label1.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label1.Location = New-Object System.Drawing.Point(20, 20)
+    $Label1.Size = New-Object System.Drawing.Size(600, 30)
+    $Panel.Controls.Add($Label1)
+
+    $ReturnBtn = New-Object System.Windows.Forms.Button
+    $ReturnBtn.Text = "← Return to Workspace"
+    $ReturnBtn.Font = $FontBtn
+    $ReturnBtn.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444")
+    $ReturnBtn.ForeColor = [System.Drawing.Color]::White
+    $ReturnBtn.Location = New-Object System.Drawing.Point(1000, 20)
+    $ReturnBtn.Size = New-Object System.Drawing.Size(220, 35)
+    $ReturnBtn.FlatStyle = "Flat"
+    $ReturnBtn.FlatAppearance.BorderSize = 0
+    $ReturnBtn.Add_Click({ Render-Workspace })
+    $Panel.Controls.Add($ReturnBtn)
+
+    $Box = New-Object System.Windows.Forms.TextBox
+    $Box.Multiline = $true
+    $Box.Font = $FontConsole
+    $Box.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+    $Box.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Box.Location = New-Object System.Drawing.Point(20, 60)
+    $Box.Size = New-Object System.Drawing.Size(1235, 130)
+    $Box.ReadOnly = $true
+    $Adapters = Get-NetAdapter | Select-Object -ExpandProperty Name
+    $Box.Text = $Adapters -join "`r`n"
+    $Panel.Controls.Add($Box)
+
+    $Label2 = New-Object System.Windows.Forms.Label
+    $Label2.Text = "Input targeted adapter label string precisely:"
+    $Label2.Font = $FontBtn
+    $Label2.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+    $Label2.Location = New-Object System.Drawing.Point(20, 210)
+    $Label2.Size = New-Object System.Drawing.Size(500, 25)
+    $Panel.Controls.Add($Label2)
+
+    $Entry = New-Object System.Windows.Forms.TextBox
+    $Entry.Size = New-Object System.Drawing.Size(400, 35)
+    $Entry.Location = New-Object System.Drawing.Point(20, 240)
+    $Entry.Font = $FontBtn
+    $Panel.Controls.Add($Entry)
+
+    $BtnFrame = New-Object System.Windows.Forms.FlowLayoutPanel
+    $BtnFrame.Location = New-Object System.Drawing.Point(20, 300)
+    $BtnFrame.Size = New-Object System.Drawing.Size(800, 60)
+    $Panel.Controls.Add($BtnFrame)
+
+    $Actions = @("Disable", "Enable", "Restart")
+    foreach ($act in $Actions) {
+        $B = New-Object System.Windows.Forms.Button
+        $B.Text = if ($act -eq "Restart") { "Power-Cycle Interfacer" } else { "$act Path" }
+        $B.Font = $FontBtn
+        $B.Size = New-Object System.Drawing.Size(220, 40)
+        $B.FlatStyle = "Flat"
+        $B.FlatAppearance.BorderSize = 0
+        $B.ForeColor = [System.Drawing.Color]::White
+        
+        if ($act -eq "Disable") { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#EF4444") }
+        elseif ($act -eq "Enable") { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#10B981") }
+        else { $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent) }
+
+        $B.Add_Click({
+            $n = $Entry.Text.Trim()
+            if (-not $n) { return }
+            Update-Status "Sending active instructions to adapter pipeline node: $n"
+            if ($act -eq "Disable") { Disable-NetAdapter -Name $n -Confirm:$false }
+            elseif ($act -eq "Enable") { Enable-NetAdapter -Name $n -Confirm:$false }
+            else { Restart-NetAdapter -Name $n -Confirm:$false }
+            Update-Status "Successfully processed net interface target operation: $n"
+            Render-Workspace
+        })
+        $BtnFrame.Controls.Add($B)
+    }
+}
+
+# --- CORE RENDER ENGINES ---
+function Render-Workspace {
+    $ContentWorkspace.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+    $currentSubs = $CONFIG[$Global:CurrentCategory]
+
+    if ($Global:CurrentCategory -eq "Config") {
+        $Wrapper = New-Object System.Windows.Forms.Panel
+        $Wrapper.Dock = "Fill"
+        $Wrapper.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $ContentWorkspace.Controls.Add($Wrapper)
+
+        $TitleLbl = New-Object System.Windows.Forms.Label
+        $TitleLbl.Text = "Legacy System Administration Panels"
+        $TitleLbl.Font = $FontTitle
+        $TitleLbl.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $TitleLbl.Location = New-Object System.Drawing.Point(20, 20)
+        $TitleLbl.Size = New-Object System.Drawing.Size(500, 30)
+        $Wrapper.Controls.Add($TitleLbl)
+
+        $Y = 70
+        foreach ($subText in $currentSubs) {
+            $B = New-Object System.Windows.Forms.Button
+            $B.Text = "  $subText"
+            $B.Font = $FontBtn
+            $B.Size = New-Object System.Drawing.Size(1235, 38)
+            $B.Location = New-Object System.Drawing.Point(20, $Y)
+            $B.FlatStyle = "Flat"
+            $B.TextAlign = "MiddleLeft"
+            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            
+            $B.Add_Click({ Resolve-Command $this.Text.Trim() })
+            $Wrapper.Controls.Add($B)
+            $Y += 44
+        }
+    } else {
+        $LeftPanel = New-Object System.Windows.Forms.Panel
+        $LeftPanel.Size = New-Object System.Drawing.Size(625, 520)
+        $LeftPanel.Location = New-Object System.Drawing.Point(0, 0)
+        $LeftPanel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $ContentWorkspace.Controls.Add($LeftPanel)
+
+        $RightPanel = New-Object System.Windows.Forms.Panel
+        $RightPanel.Size = New-Object System.Drawing.Size(625, 520)
+        $RightPanel.Location = New-Object System.Drawing.Point(650, 0)
+        $RightPanel.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+        $ContentWorkspace.Controls.Add($RightPanel)
+
+        $LTitle = New-Object System.Windows.Forms.Label
+        $LTitle.Text = "⚡ Action Sequences"
+        $LTitle.Font = $FontTitle
+        $LTitle.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $LTitle.Location = New-Object System.Drawing.Point(20, 20)
+        $LTitle.Size = New-Object System.Drawing.Size(300, 30)
+        $LeftPanel.Controls.Add($LTitle)
+
+        $RTitle = New-Object System.Windows.Forms.Label
+        $RTitle.Text = "🛠 Interface Preferences"
+        $RTitle.Font = $FontTitle
+        $RTitle.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        $RTitle.Location = New-Object System.Drawing.Point(20, 20)
+        $RTitle.Size = New-Object System.Drawing.Size(300, 30)
+        $RightPanel.Controls.Add($RTitle)
+
+        $LY = 70; $RY = 70
+        
+        $splitThreshold = [Math]::Ceiling($currentSubs.Count / 2)
+        
+        for ($i=0; $i -lt $currentSubs.Count; $i++) {
+            $subText = $currentSubs[$i]
+            $B = New-Object System.Windows.Forms.Button
+            
+            if ($subText -eq "Optimize Performance") {
+                if ($Global:OptimizeState) { $B.Text = "  Disable Performance Mode" }
+                else { $B.Text = "  Optimize Performance (Enable)" }
+            } else {
+                $B.Text = "  $subText"
+            }
+            
+            $B.Font = $FontBtn
+            $B.Size = New-Object System.Drawing.Size(585, 40)
+            $B.FlatStyle = "Flat"
+            $B.TextAlign = "MiddleLeft"
+            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+            $B.FlatAppearance.BorderColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            
+            $B.Add_Click({ 
+                $cmdLabel = $this.Text.Trim()
+                if ($cmdLabel -match "Performance Mode$|Performance \(Enable\)$") {
+                    Resolve-Command "Optimize Performance"
+                } else {
+                    Resolve-Command $cmdLabel
+                }
+            })
+
+            if ($i -lt $splitThreshold) {
+                $B.Location = New-Object System.Drawing.Point(20, $LY)
+                $LeftPanel.Controls.Add($B)
+                $LY += 50
+            } else {
+                $B.Location = New-Object System.Drawing.Point(20, $RY)
+                $RightPanel.Controls.Add($B)
+                $RY += 50
+            }
+        }
+    }
+}
+
+function Render-Navigation {
+    $TabContainer.Controls.Clear()
+    $tm = $THEMES[$Global:ActiveTheme]
+
+    foreach ($category in $CONFIG.Keys) {
+        $isActive = ($category -eq $Global:CurrentCategory)
+        $B = New-Object System.Windows.Forms.Button
+        $B.Text = $category
+        $B.Size = New-Object System.Drawing.Size(150, 42)
+        $B.Font = $FontTab
+        $B.FlatStyle = "Flat"
+        $B.FlatAppearance.BorderSize = 0
+        
+        if ($isActive) {
+            $B.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.accent)
+            $B.ForeColor = [System.Drawing.Color]::White
+        } else {
+            $B.BackColor = [System.Drawing.Color]::Transparent
+            $B.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($tm.text)
+        }
+
+        $B.Add_Click({
+            $Global:CurrentCategory = $this.Text
+            Apply-ThemeEngine
+            Update-Status "Switched view workspace focus context target to: $($this.Text)"
+        })
+        $TabContainer.Controls.Add($B)
+    }
+}
+
+function Apply-ThemeEngine {
+    $tm = $THEMES[$Global:ActiveTheme]
+    $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.bg)
+    $TopHeader.BackColor = [System.Drawing.ColorTranslator]::FromHtml($tm.card)
+    $NotificationBar.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+    
+    Render-Navigation
+    Render-Workspace
+}
+
+# --- THEME DROPDOWN SETUP ---
+$ThemeDropdown = New-Object System.Windows.Forms.ComboBox
+$ThemeDropdown.Location = New-Object System.Drawing.Point(1100, 15)
+$ThemeDropdown.Size = New-Object System.Drawing.Size(180, 40)
+$ThemeDropdown.Font = $FontBtn
+$ThemeDropdown.DropDownStyle = "DropDownList"
+foreach ($key in $THEMES.Keys) { [void]$ThemeDropdown.Items.Add($key) }
+$ThemeDropdown.SelectedItem = $Global:ActiveTheme
+$ThemeDropdown.Add_SelectedIndexChanged({
+    $Global:ActiveTheme = $ThemeDropdown.SelectedItem.ToString()
+    Apply-ThemeEngine
+    Update-Status "Global layout color themes synchronized to: '$($Global:ActiveTheme)'"
+})
+$TopHeader.Controls.Add($ThemeDropdown)
+
+# --- EXECUTION INITIALIZATION ---
+Apply-ThemeEngine
+Log "Advanced Windows Optimization Core Engine Environment Initialized."
+[System.Windows.Forms.Application]::Run($Form)
