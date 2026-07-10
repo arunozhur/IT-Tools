@@ -1,10 +1,13 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.4 (NETWORK SCANNER INCLUDED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.5 (STABILIZED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
+
+# ഫോണ്ട് ഒബ്‌ജക്റ്റ് നിർമ്മിക്കുന്നതിന് മുൻപ് അസംബ്ലി പൂർണ്ണമായും ലോഡ് ആയി എന്ന് ഉറപ്പുവരുത്താൻ ഈ വരികൾ സ്ക്രിപ്റ്റിന്റെ തുടക്കത്തിൽ തന്നെ വെക്കുക
+$Global:FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 
 $CONFIG = [ordered]@{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
@@ -17,7 +20,6 @@ $CONFIG = [ordered]@{
 $Global:CurrentCategory = "Config"
 
 # --- CORE FUNCTIONS ---
-
 function Run-Cmd($command, $title) { 
     Start-Process "cmd.exe" -ArgumentList "/k title $title && echo === Executing: $title === && echo. && $command" 
 }
@@ -31,7 +33,7 @@ function Get-SystemHardwareInfo {
     $Array = Get-CimInstance Win32_PhysicalMemoryArray
     $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
     
-    $SMBIOS = $RAM[0].SMBIOSMemoryType
+    $SMBIOS = if ($RAM) { $RAM[0].SMBIOSMemoryType } else { 0 }
     $RType = if ($SMBIOS -eq 26) {"DDR4"} elseif ($SMBIOS -eq 34) {"DDR5"} elseif ($SMBIOS -eq 24) {"DDR3"} else {"Unknown"}
     $SType = if ($Disk.MediaType -eq 4) { "SSD / NVMe" } else { "HDD" }
     
@@ -44,7 +46,7 @@ function Get-SystemHardwareInfo {
 function Render-Workspace {
     $ContentWorkspace.Controls.Clear(); $Y = 20
     foreach ($subText in $CONFIG[$Global:CurrentCategory]) {
-        $B = New-Object System.Windows.Forms.Button; $B.Text = $subText; $B.Size = New-Object System.Drawing.Size(300, 40); $B.Location = New-Object System.Drawing.Point(20, $Y); $B.Font = $FontBtn; $B.Add_Click({ Resolve-Command $this.Text }); $ContentWorkspace.Controls.Add($B); $Y += 50
+        $B = New-Object System.Windows.Forms.Button; $B.Text = $subText; $B.Size = New-Object System.Drawing.Size(300, 40); $B.Location = New-Object System.Drawing.Point(20, $Y); $B.Font = $Global:FontBtn; $B.Add_Click({ Resolve-Command $this.Text }); $ContentWorkspace.Controls.Add($B); $Y += 50
     }
 }
 
@@ -126,13 +128,12 @@ function Resolve-Command($label) {
 
 # --- GUI SETUP ---
 $Form = New-Object System.Windows.Forms.Form; $Form.Text = "Advanced Windows Optimization Engine"; $Form.Size = New-Object System.Drawing.Size(1350, 900); $Form.StartPosition = "CenterScreen"
-$FontBtn = New-Object System.Windows.Forms.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
-$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
+$TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(1000, 50); $TopHeader.Controls.Add($TabContainer)
 $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
 
 foreach ($cat in $CONFIG.Keys) {
-    $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(150, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
+    $B = New-Object System.Windows.Forms.Button; $B.Text = $cat; $B.Size = New-Object System.Drawing.Size(180, 40); $B.Add_Click({ $Global:CurrentCategory = $this.Text; Render-Workspace }); $TabContainer.Controls.Add($B)
 }
 
 Render-Workspace
