@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.1 (FULL HARDWARE LOGIC)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.2 (FINAL VERSION)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -31,7 +31,6 @@ function Get-SystemHardwareInfo {
     $Array = Get-CimInstance Win32_PhysicalMemoryArray
     $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
     
-    # Detailed Logic
     $SMBIOS = $RAM[0].SMBIOSMemoryType
     $RType = if ($SMBIOS -eq 26) {"DDR4"} elseif ($SMBIOS -eq 34) {"DDR5"} elseif ($SMBIOS -eq 24) {"DDR3"} else {"Unknown"}
     $SType = if ($Disk.MediaType -eq 4) { "SSD / NVMe" } else { "HDD" }
@@ -65,7 +64,22 @@ function Resolve-Command($label) {
         "schedule shutdown"      { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Shutdown", "3600"); if($t){Run-Cmd "shutdown /s /t $t" "Shutdown Scheduled"} }
         "schedule restart"       { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Restart", "3600"); if($t){Run-Cmd "shutdown /r /t $t" "Restart Scheduled"} }
         "cancel scheduled task"  { Run-Cmd "shutdown /a" "Tasks Cancelled" }
-        "view shutdown/restart log" { Run-Cmd "eventvwr.msc /c:System" "System Event Log" }
+        
+        "view shutdown/restart log" { 
+            $ContentWorkspace.Controls.Clear()
+            $thirtyDaysAgo = (Get-Date).AddDays(-30)
+            $logs = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074; StartTime=$thirtyDaysAgo} -ErrorAction SilentlyContinue | Select-Object TimeCreated, Message
+            
+            $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.ScrollBars = "Vertical"; $Box.Font = [System.Drawing.Font]::new("Consolas", 10); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.ReadOnly = $true
+            if ($logs) {
+                $msg = "--- SHUTDOWN/RESTART LOG (LAST 30 DAYS) ---`r`n`r`n"
+                foreach ($l in $logs) { $msg += "Date: $($l.TimeCreated)`r`nDetails: $($l.Message)`r`n-----------------------------------------------------------`r`n" }
+                $Box.Text = $msg
+            } else { $Box.Text = "No shutdown/restart logs found in the last 30 days." }
+            $ContentWorkspace.Controls.Add($Box)
+            $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
+        }
+        
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
         "force screen timeout"   { $min = [Microsoft.VisualBasic.Interaction]::InputBox("Minutes:", "Timeout", "60"); if($min){$s=[int]$min*60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $s && powercfg /setactive scheme_current" "Timeout Set"} }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
@@ -94,7 +108,6 @@ function Resolve-Command($label) {
 # --- GUI SETUP ---
 $Form = New-Object System.Windows.Forms.Form; $Form.Text = "Advanced Windows Optimization Engine"; $Form.Size = New-Object System.Drawing.Size(1350, 900); $Form.StartPosition = "CenterScreen"
 $FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-
 $TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
 $TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
 $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
