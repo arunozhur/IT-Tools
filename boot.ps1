@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.3 (FINAL VERSION)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.4 (NETWORK SCANNER INCLUDED)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -82,15 +82,20 @@ function Resolve-Command($label) {
         
         "network watcher" { 
             $ContentWorkspace.Controls.Clear()
-            $devices = arp -a | Select-String -Pattern "dynamic|static"
             $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.ScrollBars = "Vertical"; $Box.Font = [System.Drawing.Font]::new("Consolas", 10); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.ReadOnly = $true
-            $msg = "--- NETWORK DEVICES WATCHER ---`r`n`r`nIP Address`t`tMAC Address`t`tType`r`n-----------------------------------------------------------`r`n"
-            foreach ($d in $devices) {
-                $line = $d.ToString().Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
-                $msg += "$($line[0])`t`t$($line[1])`t`t$($line[2])`r`n"
+            $Box.Text = "Scanning network, please wait..."
+            $ContentWorkspace.Controls.Add($Box)
+            $Form.Refresh()
+            
+            $ipBase = (Test-Connection -ComputerName (hostname) -Count 1).IPV4Address.IPAddressToString.Substring(0, 10)
+            $msg = "--- ACTIVE NETWORK DEVICES ---`r`n`r`nIP Address`t`tStatus`r`n-----------------------------------------------------------`r`n"
+            foreach ($i in 1..254) {
+                $ip = "$ipBase.$i"
+                if (Test-Connection -ComputerName $ip -Count 1 -Quiet) {
+                    $msg += "$ip`t`tOnline`r`n"
+                }
             }
             $Box.Text = $msg
-            $ContentWorkspace.Controls.Add($Box)
             $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
         }
 
@@ -121,7 +126,7 @@ function Resolve-Command($label) {
 
 # --- GUI SETUP ---
 $Form = New-Object System.Windows.Forms.Form; $Form.Text = "Advanced Windows Optimization Engine"; $Form.Size = New-Object System.Drawing.Size(1350, 900); $Form.StartPosition = "CenterScreen"
-$FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$FontBtn = New-Object System.Windows.Forms.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $TopHeader = New-Object System.Windows.Forms.Panel; $TopHeader.Height = 70; $TopHeader.Dock = "Top"; $Form.Controls.Add($TopHeader)
 $TabContainer = New-Object System.Windows.Forms.FlowLayoutPanel; $TabContainer.Location = New-Object System.Drawing.Point(25, 12); $TabContainer.Size = New-Object System.Drawing.Size(800, 50); $TopHeader.Controls.Add($TabContainer)
 $ContentWorkspace = New-Object System.Windows.Forms.Panel; $ContentWorkspace.Location = New-Object System.Drawing.Point(30, 90); $ContentWorkspace.Size = New-Object System.Drawing.Size(1275, 530); $Form.Controls.Add($ContentWorkspace)
