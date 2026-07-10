@@ -1,19 +1,18 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.5 (STABILIZED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.6 (STABLE)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
 
-# ഫോണ്ട് ഒബ്‌ജക്റ്റ് നിർമ്മിക്കുന്നതിന് മുൻപ് അസംബ്ലി പൂർണ്ണമായും ലോഡ് ആയി എന്ന് ഉറപ്പുവരുത്താൻ ഈ വരികൾ സ്ക്രിപ്റ്റിന്റെ തുടക്കത്തിൽ തന്നെ വെക്കുക
 $Global:FontBtn = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 
 $CONFIG = [ordered]@{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
     "Automation" = @("Schedule Shutdown", "Schedule Restart", "Cancel Scheduled Task", "View Shutdown/Restart Log")
-    "Network Tools" = @("Network Adaptor", "IP Config Overview", "Ping Diagnostic (8.8.8.8)", "GP Update Force", "Network Reset Sequence", "Flush DNS Cache", "View Active Connections", "Firewall Status Check", "NTP Server Sync", "OpenSSH Server Enable", "Network Watcher")
+    "Network Tools" = @("Network Adaptor", "IP Config Overview", "Ping Diagnostic (8.8.8.8)", "GP Update Force", "Network Reset Sequence", "Flush DNS Cache", "View Active Connections", "Firewall Status Check", "NTP Server Sync", "OpenSSH Server Enable")
     "Fixes & Updates" = @("Chkdsk Scan", "Restart Explorer", "Clear DNS Resolver", "Reset Winsock")
 }
 
@@ -66,12 +65,10 @@ function Resolve-Command($label) {
         "schedule shutdown"      { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Shutdown", "3600"); if($t){Run-Cmd "shutdown /s /t $t" "Shutdown Scheduled"} }
         "schedule restart"       { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Restart", "3600"); if($t){Run-Cmd "shutdown /r /t $t" "Restart Scheduled"} }
         "cancel scheduled task"  { Run-Cmd "shutdown /a" "Tasks Cancelled" }
-        
         "view shutdown/restart log" { 
             $ContentWorkspace.Controls.Clear()
             $thirtyDaysAgo = (Get-Date).AddDays(-30)
             $logs = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074; StartTime=$thirtyDaysAgo} -ErrorAction SilentlyContinue | Select-Object TimeCreated, Message
-            
             $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.ScrollBars = "Vertical"; $Box.Font = [System.Drawing.Font]::new("Consolas", 10); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.ReadOnly = $true
             if ($logs) {
                 $msg = "--- SHUTDOWN/RESTART LOG (LAST 30 DAYS) ---`r`n`r`n"
@@ -81,26 +78,6 @@ function Resolve-Command($label) {
             $ContentWorkspace.Controls.Add($Box)
             $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
         }
-        
-        "network watcher" { 
-            $ContentWorkspace.Controls.Clear()
-            $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.ScrollBars = "Vertical"; $Box.Font = [System.Drawing.Font]::new("Consolas", 10); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.ReadOnly = $true
-            $Box.Text = "Scanning network, please wait..."
-            $ContentWorkspace.Controls.Add($Box)
-            $Form.Refresh()
-            
-            $ipBase = (Test-Connection -ComputerName (hostname) -Count 1).IPV4Address.IPAddressToString.Substring(0, 10)
-            $msg = "--- ACTIVE NETWORK DEVICES ---`r`n`r`nIP Address`t`tStatus`r`n-----------------------------------------------------------`r`n"
-            foreach ($i in 1..254) {
-                $ip = "$ipBase.$i"
-                if (Test-Connection -ComputerName $ip -Count 1 -Quiet) {
-                    $msg += "$ip`t`tOnline`r`n"
-                }
-            }
-            $Box.Text = $msg
-            $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
-        }
-
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
         "force screen timeout"   { $min = [Microsoft.VisualBasic.Interaction]::InputBox("Minutes:", "Timeout", "60"); if($min){$s=[int]$min*60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $s && powercfg /setactive scheme_current" "Timeout Set"} }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
