@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.0 (PERFECTED)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.1 (FULL HARDWARE LOGIC)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -25,14 +25,18 @@ function Run-Cmd($command, $title) {
 function Get-SystemHardwareInfo {
     $ContentWorkspace.Controls.Clear()
     $OS = Get-CimInstance Win32_OperatingSystem
+    $BIOS = Get-CimInstance Win32_BIOS
     $CPU = Get-CimInstance Win32_Processor
     $RAM = Get-CimInstance Win32_PhysicalMemory
+    $Array = Get-CimInstance Win32_PhysicalMemoryArray
     $Disk = Get-CimInstance MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ErrorAction SilentlyContinue
     
-    $SType = "HDD"
-    if ($Disk.MediaType -eq 4) { $SType = "SSD" }
+    # Detailed Logic
+    $SMBIOS = $RAM[0].SMBIOSMemoryType
+    $RType = if ($SMBIOS -eq 26) {"DDR4"} elseif ($SMBIOS -eq 34) {"DDR5"} elseif ($SMBIOS -eq 24) {"DDR3"} else {"Unknown"}
+    $SType = if ($Disk.MediaType -eq 4) { "SSD / NVMe" } else { "HDD" }
     
-    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nCPU            : $($CPU.Name)`r`nRAM Capacity   : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nSlots Used     : $($RAM.Count)`r`nStorage Type   : $SType"
+    $Report = "--- OS & SYSTEM ---`r`nOS Name        : $($OS.Caption)`r`nSerial Number  : $($BIOS.SerialNumber)`r`nCPU            : $($CPU.Name)`r`n`r`n--- MEMORY (RAM) ---`r`nTotal RAM      : $([math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)) GB`r`nRAM Type       : $RType`r`nSlots Total    : $($Array.MemoryDevices)`r`nSlots Used     : $($RAM.Count)`r`nSlots Available: $($Array.MemoryDevices - $RAM.Count)`r`n`r`n--- STORAGE ---`r`nDevice Type    : $SType`r`nModel          : $($Disk.Model)`r`nTotal Size     : $([math]::Round(($Disk.Size | Measure-Object -Sum).Sum / 1GB, 0)) GB"
     
     $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.Font = [System.Drawing.Font]::new("Consolas", 11); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.Text = $Report; $Box.ReadOnly = $true; $ContentWorkspace.Controls.Add($Box)
     $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
@@ -48,7 +52,6 @@ function Render-Workspace {
 function Resolve-Command($label) {
     $txt = $label.Trim().ToLower()
     switch ($txt) {
-        # Config & Info
         "system hardware report" { Get-SystemHardwareInfo }
         "computer management"    { Start-Process "compmgmt.msc" }
         "control panel"          { Start-Process "control" }
@@ -59,14 +62,10 @@ function Resolve-Command($label) {
         "sound settings"         { Start-Process "mmsys.cpl" }
         "system properties"      { Start-Process "sysdm.cpl" }
         "time and date"          { Start-Process "timedate.cpl" }
-        
-        # Automation
         "schedule shutdown"      { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Shutdown", "3600"); if($t){Run-Cmd "shutdown /s /t $t" "Shutdown Scheduled"} }
         "schedule restart"       { $t = [Microsoft.VisualBasic.Interaction]::InputBox("Seconds:", "Restart", "3600"); if($t){Run-Cmd "shutdown /r /t $t" "Restart Scheduled"} }
         "cancel scheduled task"  { Run-Cmd "shutdown /a" "Tasks Cancelled" }
         "view shutdown/restart log" { Run-Cmd "eventvwr.msc /c:System" "System Event Log" }
-        
-        # Tweaks & Tools
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
         "force screen timeout"   { $min = [Microsoft.VisualBasic.Interaction]::InputBox("Minutes:", "Timeout", "60"); if($min){$s=[int]$min*60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $s && powercfg /setactive scheme_current" "Timeout Set"} }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
@@ -74,8 +73,6 @@ function Resolve-Command($label) {
         "optimize performance"   { $c = [System.Windows.Forms.MessageBox]::Show("Yes: High Perf, No: Balanced", "Mode", 4); if($c -eq 6){Run-Cmd "powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" "High Perf"}elseif($c -eq 7){Run-Cmd "powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" "Balanced"} }
         "enable long paths"      { Run-Cmd 'reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f' "Long Paths" }
         "create restore point"   { Run-Cmd "powershell -Command Checkpoint-Computer -Description 'Manual' -RestorePointType 'MODIFY_SETTINGS'" "Restore Point" }
-        
-        # Network & Fixes
         "network adaptor"        { Start-Process "ncpa.cpl" }
         "ip config overview"     { Run-Cmd "ipconfig /all" "IP Config" }
         "ping diagnostic (8.8.8.8)" { Run-Cmd "ping 8.8.8.8" "Ping" }
@@ -90,7 +87,7 @@ function Resolve-Command($label) {
         "restart explorer"       { Run-Cmd "taskkill /f /im explorer.exe && start explorer.exe" "Explorer" }
         "clear dns resolver"     { Run-Cmd "ipconfig /flushdns" "DNS" }
         "reset winsock"          { Run-Cmd "netsh winsock reset" "Winsock" }
-        default                  { Run-Cmd $txt $txt }
+        default { Run-Cmd $txt $txt }
     }
 }
 
