@@ -1,5 +1,5 @@
 # ========================================================================
-# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.2 (FINAL VERSION)
+# ADVANCED WINDOWS OPTIMIZATION ENGINE - V8.3 (FINAL VERSION)
 # ========================================================================
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -10,7 +10,7 @@ $CONFIG = [ordered]@{
     "Tweaks" = @("Restart Spooler", "Force Screen Timeout", "System Corruption Scan", "Clear Temp Files", "Optimize Performance", "Enable Long Paths", "Create Restore Point")
     "Config" = @("System Hardware Report", "Computer Management", "Control Panel", "Network Connections", "Power Panel", "Printer Panel", "Region", "Sound Settings", "System Properties", "Time and Date")
     "Automation" = @("Schedule Shutdown", "Schedule Restart", "Cancel Scheduled Task", "View Shutdown/Restart Log")
-    "Network Tools" = @("Network Adaptor", "IP Config Overview", "Ping Diagnostic (8.8.8.8)", "GP Update Force", "Network Reset Sequence", "Flush DNS Cache", "View Active Connections", "Firewall Status Check", "NTP Server Sync", "OpenSSH Server Enable")
+    "Network Tools" = @("Network Adaptor", "IP Config Overview", "Ping Diagnostic (8.8.8.8)", "GP Update Force", "Network Reset Sequence", "Flush DNS Cache", "View Active Connections", "Firewall Status Check", "NTP Server Sync", "OpenSSH Server Enable", "Network Watcher")
     "Fixes & Updates" = @("Chkdsk Scan", "Restart Explorer", "Clear DNS Resolver", "Reset Winsock")
 }
 
@@ -80,6 +80,20 @@ function Resolve-Command($label) {
             $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
         }
         
+        "network watcher" { 
+            $ContentWorkspace.Controls.Clear()
+            $devices = arp -a | Select-String -Pattern "dynamic|static"
+            $Box = New-Object System.Windows.Forms.TextBox; $Box.Multiline = $true; $Box.ScrollBars = "Vertical"; $Box.Font = [System.Drawing.Font]::new("Consolas", 10); $Box.Size = New-Object System.Drawing.Size(1235, 400); $Box.Location = New-Object System.Drawing.Point(20, 20); $Box.ReadOnly = $true
+            $msg = "--- NETWORK DEVICES WATCHER ---`r`n`r`nIP Address`t`tMAC Address`t`tType`r`n-----------------------------------------------------------`r`n"
+            foreach ($d in $devices) {
+                $line = $d.ToString().Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+                $msg += "$($line[0])`t`t$($line[1])`t`t$($line[2])`r`n"
+            }
+            $Box.Text = $msg
+            $ContentWorkspace.Controls.Add($Box)
+            $ReturnBtn = New-Object System.Windows.Forms.Button; $ReturnBtn.Text = "← Return"; $ReturnBtn.Location = New-Object System.Drawing.Point(20, 440); $ReturnBtn.Add_Click({ Render-Workspace }); $ContentWorkspace.Controls.Add($ReturnBtn)
+        }
+
         "restart spooler"        { Run-Cmd "net stop spooler && del /q /f /s %systemroot%\System32\Spool\Printers\* && net start spooler" "Spooler Reset" }
         "force screen timeout"   { $min = [Microsoft.VisualBasic.Interaction]::InputBox("Minutes:", "Timeout", "60"); if($min){$s=[int]$min*60; Run-Cmd "powercfg /setacvalueindex scheme_current sub_video videoidle $s && powercfg /setactive scheme_current" "Timeout Set"} }
         "system corruption scan" { Run-Cmd "sfc /scannow" "SFC Scan" }
